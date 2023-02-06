@@ -4,6 +4,8 @@ using FinanceControl.Extensions.BaseRepository;
 using FinanceControl.WebApi.Extensions.Context;
 using MongoDB.Driver;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using ILogger = Serilog.ILogger;
 
@@ -81,7 +83,8 @@ public class UserRepository : BaseRepository<UserModel>
                 CellPhone = u.CellPhone,
                 Occupation = u.Occupation,
                 Thumbnail = u.Thumbnail,
-                Password = u.Password
+                Password = u.Password,
+                FamilyMembers = u.FamilyMembers
             })
             .FirstOrDefaultAsync();
 
@@ -128,5 +131,86 @@ public class UserRepository : BaseRepository<UserModel>
 
         await UpdateOneAsync(update, filter);
     }
+
+    #region [ Family Members ]
+
+    /// <summary>
+    /// Obtem os Membros Familiares do Usuário
+    /// </summary>
+    /// <param name="userId"></param>
+    /// <returns></returns>
+    public async Task<List<FamilyMemberModel>> GetFamilyMembersByUserId(Guid userId)
+    {
+        var filter = Builders<UserModel>.Filter
+            .Where(p => p.UserId.Equals(userId)
+                        && p.Active.Equals(true));
+
+        var sort = Builders<UserModel>.Sort
+            .Ascending(x => x.CreationDate);
+
+        var query = await GetUserCollection()
+            .Aggregate()
+            .Match(filter)
+            .Sort(sort)
+            .Project(u => new UserModel
+            {
+                UserId = u.UserId,
+                FamilyMembers = u.FamilyMembers
+            })
+            .FirstOrDefaultAsync();
+
+        var result = query?.FamilyMembers?.Where(f => f.Active.Equals(true)).ToList();
+        return result;
+    }
+
+    /// <summary>
+    /// Obtem um Membro Familiar 
+    /// </summary>
+    /// <param name="userId"></param>
+    /// <param name="familyId"></param>
+    /// <returns></returns>
+    public async Task<FamilyMemberModel> GetFamilyMemberByUserId(Guid userId, Guid familyId)
+    {
+        var filter = Builders<UserModel>.Filter
+            .Where(p => p.UserId.Equals(userId)
+                        && p.Active.Equals(true));
+
+        var sort = Builders<UserModel>.Sort
+            .Ascending(x => x.CreationDate);
+
+        var query = await GetUserCollection()
+            .Aggregate()
+            .Match(filter)
+            .Sort(sort)
+            .Project(u => new UserModel
+            {
+                UserId = u.UserId,
+                FamilyMembers = u.FamilyMembers
+            })
+            .FirstOrDefaultAsync();
+
+        var result = query?.FamilyMembers?.FirstOrDefault(f => f.FamilyId.Equals(familyId) && f.Active.Equals(true));
+        return result;
+    }
+
+    /// <summary>
+    /// Insere ou Atualiza os Membros Familiares do Usuário
+    /// </summary>
+    /// <param name="userId"></param>
+    /// <param name="model"></param>
+    /// <returns></returns>
+    public async Task UpdateFamilyMembers(Guid userId, UserModel model)
+    {
+        var filter = Builders<UserModel>.Filter
+            .Where(x => x.UserId.Equals(userId)
+                        && x.Active.Equals(true));
+
+        var update = Builders<UserModel>.Update
+            .Set(rec => rec.FamilyMembers, model.FamilyMembers)
+            .Set(p => p.UpdateDate, DateTime.UtcNow);
+
+        await UpdateOneAsync(update, filter);
+    }
+    #endregion
     #endregion
 }

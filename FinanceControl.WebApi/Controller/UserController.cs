@@ -93,5 +93,86 @@ public class UserController : BaseController
         using var service = new UserService(_appSettings, _logger, _request.UserId);
         return Ok(await service.GetById());
     }
+
+    #region [ Family Members ]
+
+    /// <summary>
+    /// Obtém os membros familiares do Usuário
+    /// </summary>
+    /// <returns></returns>
+    [HttpGet("/v1/user/family-members")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetFamilyMembersByUserId()
+    {
+        using var service = new UserService(_appSettings, _logger, _request.UserId);
+        return Ok(await service.GetFamilyMembersByUserId());
+    }
+
+    /// <summary>
+    /// Obtém o membro familiar do Usuário
+    /// </summary>
+    /// <param name="familyId"></param>
+    /// <returns></returns>
+    [HttpGet("/v1/user/family-members/{familyId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetFamilyMemberByUserId([FromRoute] Guid familyId)
+    {
+        using var service = new UserService(_appSettings, _logger, _request.UserId);
+        return Ok(await service.GetFamilyMemberByUserId(familyId));
+    }
+
+    /// <summary>
+    /// Insere um membro familiar do Usuário
+    /// </summary>
+    /// <param name="request"></param>
+    /// <returns></returns>
+    [HttpPut("/v1/user/family-members")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> InsertFamilyMember([FromBody] FamilyMemberRequest request)
+    {
+        using var service = new UserService(_appSettings, _logger, _request.UserId);
+        return Ok(await service.InsertFamilyMember(request));
+    }
+
+    /// <summary>
+    /// Atualiza um membro familiar do Usuário
+    /// </summary>
+    /// <param name="familyId"></param>
+    /// <param name="request"></param>
+    /// <returns></returns>
+    [HttpPut("/v1/user/family-members/{familyId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateFamilyMember([FromRoute] Guid familyId, [FromBody] FamilyMemberRequest request)
+    {
+        using var service = new UserService(_appSettings, _logger, _request.UserId);
+        return Ok(await service.UpdateFamilyMember(familyId, request));
+    }
+
+    /// <summary>
+    /// Inativa ou Ativa um membro familiar do Usuário
+    /// </summary>
+    /// <param name="familyId"></param>
+    /// <returns></returns>
+    [HttpPut("/v1/user/family-members/{familyId}/active")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> ActiveInactiveFamilyMember([FromRoute] Guid familyId)
+    {
+        using var service = new UserService(_appSettings, _logger, _request.UserId);
+        return Ok(await service.ActiveInactiveFamilyMember(familyId));
+    }
+
+    /// <summary>
+    /// Apaga um membro familiar do Usuário
+    /// </summary>
+    /// <param name="familyId"></param>
+    /// <returns></returns>
+    [HttpPut("/v1/user/family-members/{familyId}/delete")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> DeleteFamilyMember([FromRoute] Guid familyId)
+    {
+        using var service = new UserService(_appSettings, _logger, _request.UserId);
+        return Ok(await service.DeleteFamilyMember(familyId));
+    }
+    #endregion
     #endregion
 }

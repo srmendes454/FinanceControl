@@ -33,6 +33,7 @@
 
 	<ItemGroup>
 	  <Folder Include="Services\Transactions\Model\Enum\" />
+	  <Folder Include="Services\User\Model\Enum\" />
 	</ItemGroup>
 
 </Project>

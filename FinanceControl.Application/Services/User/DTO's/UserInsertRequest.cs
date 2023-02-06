@@ -25,3 +25,9 @@ public class UserPasswordRequest
     public string NewPassword { get; set; }
     public string NewConfirmPassword { get; set; }
 }
+public class FamilyMemberRequest
+{
+    public string Name { get; set; }
+    public string Kinship { get; set; }
+    public string Email { get; set; }
+}

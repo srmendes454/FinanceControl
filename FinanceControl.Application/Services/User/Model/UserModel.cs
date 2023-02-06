@@ -2,6 +2,7 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Runtime.Serialization;
 
@@ -50,5 +51,42 @@ public class UserModel : EntityBase
     [BsonIgnoreIfNull]
     public byte[] Thumbnail { get; set; }
 
+    [DataMember]
+    [BsonIgnoreIfNull]
+    public List<FamilyMemberModel> FamilyMembers { get; set; }
+
+    #endregion
+}
+
+public class FamilyMemberModel : EntityBase
+{
+    #region [ Constructor ]
+
+    public FamilyMemberModel()
+    {
+        FamilyId = Guid.NewGuid();
+    }
+
+    #endregion
+
+    #region [ Fields ]
+
+    [DataMember]
+    [BsonIgnoreIfNull]
+    [BsonElement("FamilyId")]
+    [BsonRepresentation(BsonType.String)]
+    public Guid FamilyId { get; set; }
+
+    [DataMember]
+    [BsonIgnoreIfNull]
+    public string Name { get; set; }
+
+    [DataMember]
+    [BsonIgnoreIfNull]
+    public string Email { get; set; }
+
+    [DataMember]
+    [BsonIgnoreIfNull]
+    public string Kinship { get; set; }
     #endregion
 }

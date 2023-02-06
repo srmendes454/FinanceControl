@@ -20,6 +20,9 @@ public class UserMapper : Profile
         CreateMap<UserModel, UserResponse>()
             .ForPath(dest => dest.Thumbnail, src => src.MapFrom(x => Convert.ToBase64String(x.Thumbnail)));
 
+        CreateMap<UserModel, FamilyMembersResponse>();
+        CreateMap<FamilyMemberModel, FamilyMembersResponse>();
+
         #endregion
     }
 }
