@@ -1,18 +1,20 @@
-﻿using System;
-using System.Threading.Tasks;
-using FinanceControl.Application.Extensions.BaseService;
-using FinanceControl.Application.Extensions.Enum;
-using FinanceControl.Application.Services.Cards.DTO_s;
-using FinanceControl.Application.Services.Cards.Model.Enum;
-using FinanceControl.Application.Services.Cards.Model;
+﻿using FinanceControl.Application.Extensions.BaseService;
 using FinanceControl.Application.Services.Cards.Repository;
 using FinanceControl.Application.Services.Transactions.DTO_s.Request;
+using FinanceControl.Application.Services.Transactions.DTO_s.Response;
 using FinanceControl.Application.Services.Transactions.Model;
-using FinanceControl.Application.Services.Wallet.Repository;
-using FinanceControl.Extensions.AppSettings;
-using FinanceControl.Extensions.Enum;
-using Serilog;
 using FinanceControl.Application.Services.Transactions.Repository;
+using FinanceControl.Application.Services.User.Model;
+using FinanceControl.Application.Services.User.Repository;
+using FinanceControl.Cards.DTO_s;
+using FinanceControl.Extensions.AppSettings;
+using FinanceControl.Extensions.Paginated;
+using Serilog;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using FinanceControl.Application.Extensions.Enum;
 
 namespace FinanceControl.Application.Services.Transactions.Service
 {
@@ -57,9 +59,15 @@ namespace FinanceControl.Application.Services.Transactions.Service
                 if (request.WalletId == Guid.Empty && userId == Guid.Empty && request.Id == Guid.Empty)
                     return ErrorResponse(Message.INVALID_OBJECT.ToString());
 
-                var model = _mapper.Map<TransactionsModel>(request);
-                using var repository = new TransactionsRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+                using var useRepository = new UserRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+                var user = await useRepository.GetById(userId);
 
+                var familyMember = new FamilyMemberModel();
+                if (request.AssignedId != Guid.Empty)
+                    familyMember = await useRepository.GetFamilyMemberByUserId(userId, request.AssignedId);
+
+                using var repository = new TransactionsRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+                var model = _mapper.Map<TransactionsModel>(request);
                 switch (request.Type)
                 {
                     case "CREDIT_CARD":
@@ -68,6 +76,13 @@ namespace FinanceControl.Application.Services.Transactions.Service
                             var card = await cardRepository.GetById(request.Id, request.WalletId);
                             if (card == null)
                                 return ErrorResponse(CardNotFound);
+
+                            if (familyMember != null)
+                                model.Assigned = new AssignedModel
+                                {
+                                    AssignedId = familyMember?.FamilyId == Guid.Empty ? user.UserId : familyMember.FamilyId,
+                                    Name = familyMember?.Name ?? user.Name
+                                };
 
                             model.PaymentDetails = new PaymentDetailsModel
                             {
@@ -86,6 +101,42 @@ namespace FinanceControl.Application.Services.Transactions.Service
                 }
 
                 return SuccessResponse("TRANSACTION", Message.SUCCESSFULLY_ADDED.ToString());
+            }
+            catch (Exception ex)
+            {
+                return ErrorResponse(ex);
+            }
+        }
+
+        /// <summary>
+        /// Serviço para Obter as Transações por Tipo de Pagamento
+        /// </summary>
+        /// <param name="paymentId"></param>
+        /// <param name="assignedId"></param>
+        /// <param name="search"></param>
+        /// <param name="take"></param>
+        /// <param name="skip"></param>
+        /// <returns></returns>
+        public async Task<ResultValue> GetAll(Guid paymentId, Guid assignedId, string search, int take, int skip)
+        {
+            try
+            {
+                if (paymentId == Guid.Empty)
+                    return ErrorResponse(Message.INVALID_OBJECT.ToString());
+
+                using var repository = new TransactionsRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+                var list = await repository.GetAllByPaymentId(paymentId, assignedId, search, take, skip);
+                if (list == null)
+                    return SuccessResponse(new PaginatedResponse<TransactionsResponse> { Records = new List<TransactionsResponse>() });
+
+                var record = _mapper.Map<List<TransactionsResponse>>(list.Records);
+                var result = new PaginatedResponse<TransactionsResponse>
+                {
+                    Records = record.ToList(),
+                    Total = list.Total
+                };
+
+                return SuccessResponse(result);
             }
             catch (Exception ex)
             {

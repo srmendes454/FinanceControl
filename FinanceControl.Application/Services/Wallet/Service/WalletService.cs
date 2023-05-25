@@ -2,7 +2,6 @@
 using FinanceControl.Application.Services.Wallet.Model;
 using FinanceControl.Application.Services.Wallet.Repository;
 using FinanceControl.Extensions.AppSettings;
-using FinanceControl.Extensions.Enum;
 using FinanceControl.Wallet.DTO_s.Request;
 using FinanceControl.Wallet.DTO_s.Response;
 using MongoDB.Driver;
@@ -11,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using FinanceControl.Application.Extensions.BaseService;
+using FinanceControl.Application.Extensions.Enum;
 
 namespace FinanceControl.Application.Services.Wallet.Service;
 

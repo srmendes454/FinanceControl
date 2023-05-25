@@ -1,10 +1,10 @@
-﻿using FinanceControl.Extensions.BaseModel;
-using MongoDB.Bson;
+﻿using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Runtime.Serialization;
+using FinanceControl.Application.Extensions.BaseModel;
 
 namespace FinanceControl.Application.Services.User.Model;
 
@@ -53,8 +53,20 @@ public class UserModel : EntityBase
 
     [DataMember]
     [BsonIgnoreIfNull]
+    public ResetPasswordModel ResetPassword { get; set; }
+
+    [DataMember]
+    [BsonIgnoreIfNull]
     public List<FamilyMemberModel> FamilyMembers { get; set; }
 
+    #endregion
+
+    #region [ Public Methods ]
+
+    public void A()
+    {
+        ResetPassword = new ResetPasswordModel();
+    }
     #endregion
 }
 
@@ -89,4 +101,19 @@ public class FamilyMemberModel : EntityBase
     [BsonIgnoreIfNull]
     public string Kinship { get; set; }
     #endregion
+}
+
+public class ResetPasswordModel
+{
+    [DataMember] 
+    [BsonIgnoreIfNull] 
+    public bool PasswordReset { get; set; } = true;
+
+    [DataMember]
+    [BsonIgnoreIfNull]
+    public string Code { get; set; }
+
+    [DataMember]
+    [BsonIgnoreIfNull]
+    public DateTime ResetDate { get; set; } = DateTime.UtcNow;
 }

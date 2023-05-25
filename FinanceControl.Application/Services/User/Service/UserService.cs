@@ -1,5 +1,9 @@
-﻿using FinanceControl.Extensions.AppSettings;
-using FinanceControl.Extensions.Enum;
+﻿using FinanceControl.Application.Extensions.BaseService;
+using FinanceControl.Application.Extensions.Utils.Email;
+using FinanceControl.Application.Services.User.DTO_s;
+using FinanceControl.Application.Services.User.Model;
+using FinanceControl.Application.Services.User.Repository;
+using FinanceControl.Extensions.AppSettings;
 using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
@@ -8,33 +12,40 @@ using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
-using FinanceControl.Application.Extensions.BaseService;
-using FinanceControl.Application.Services.User.DTO_s;
-using FinanceControl.Application.Services.User.Model;
-using FinanceControl.Application.Services.User.Repository;
+using FinanceControl.Application.Extensions.Enum;
+using Microsoft.OpenApi.Extensions;
 using ILogger = Serilog.ILogger;
-using FinanceControl.Application.Services.Wallet.Repository;
-using FinanceControl.Wallet.DTO_s.Response;
 
 namespace FinanceControl.Application.Services.User.Service;
 
 public class UserService : BaseService
 {
+    #region [ Fields ]
+
+    private readonly IEmail _email;
+
+    #endregion
+
     #region [ Constructor ]
     public UserService(IAppSettings appSettings, ILogger logger,
-        Guid currentUserId) : base(logger: logger, appSettings: appSettings,
+        Guid currentUserId, IEmail email) : base(logger: logger, appSettings: appSettings,
         currentUserId: currentUserId)
     {
+        _email = email;
     }
     #endregion
 
     #region [ Messages ]
 
-    private const string PasswordsNotMatch = "PASSWORDS_DO_NOT_MATCH";
-    private const string PasswordsInvalid = "PASSWORD_INVALID";
-    private const string PasswordSamePrevious = "PASSWORD_SAME_AS_PREVIOUS";
-    private const string FamilyMembersNotFound = "FAMILY_MEMBERS_NOT_FOUND";
-    private const string FamilyMemberNotFound = "FAMILY_MEMBER_NOT_FOUND";
+    private const string PasswordsNotMatch = "As senhas são divergentes";
+    private const string PasswordsInvalid = "Senha inválida";
+    private const string PasswordEqualsOld = "A senha não pode ser igual a anterior";
+    private const string PasswordResetSuccess = "Senha redefinida com sucesso.";
+    private const string ReturnPageLogin = "Retorne a pagina de Login para entrar com sua nova senha.";
+    private const string CodeVerification = "Seu código de verificação é";
+    private const string FamilyMembersNotFound = "Nenhum membro familiar foi encontrado";
+    private const string FamilyMemberNotFound = "Membro familiar não encontrado";
+    private const string SubjectEmail = "Controle Financeiro | Código para redefinição de senha";
 
     #endregion
 
@@ -50,7 +61,7 @@ public class UserService : BaseService
         try
         {
             if (request == null)
-                return ErrorResponse(Message.INVALID_OBJECT.ToString());
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
             if (request.Password != request.ConfirmPassword)
                 return ErrorResponse(PasswordsNotMatch);
@@ -68,7 +79,7 @@ public class UserService : BaseService
 
             await repository.InsertOneAsync(model);
 
-            return SuccessResponse("USER", Message.SUCCESSFULLY_ADDED.ToString());
+            return SuccessResponse("Usuário", Message.SUCCESSFULLY_ADDED.GetEnumDescription());
         }
         catch (Exception ex)
         {
@@ -86,13 +97,13 @@ public class UserService : BaseService
         try
         {
             if (request == null)
-                return ErrorResponse(Message.INVALID_OBJECT.ToString());
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
             using var repository = new UserRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
 
             var user = await repository.GetByEmail(request.Email);
             if (user == null)
-                return ErrorResponse(Message.USER_NOT_FOUND.ToString());
+                return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
 
             var password = user.Password;
             if (request.Password != password)
@@ -117,14 +128,14 @@ public class UserService : BaseService
         try
         {
             if (request == null)
-                return ErrorResponse(Message.INVALID_OBJECT.ToString());
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
             using var repository = new UserRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
 
             var userId = GetCurrentUserId();
             var user = await repository.GetById(userId);
             if (user == null)
-                return ErrorResponse(Message.USER_NOT_FOUND.ToString());
+                return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
 
             user.Thumbnail = request.Thumbnail ?? user.Thumbnail;
             user.CellPhone = request.CellPhone ?? user.CellPhone;
@@ -133,7 +144,7 @@ public class UserService : BaseService
 
             await repository.Update(userId, user);
 
-            return SuccessResponse("USER", Message.SUCCESSFULLY_UPDATED.ToString());
+            return SuccessResponse("Usuário", Message.SUCCESSFULLY_UPDATED.GetEnumDescription());
         }
         catch (Exception ex)
         {
@@ -151,14 +162,14 @@ public class UserService : BaseService
         try
         {
             if (request == null)
-                return ErrorResponse(Message.INVALID_OBJECT.ToString());
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
             using var repository = new UserRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
 
             var userId = GetCurrentUserId();
             var user = await repository.GetById(userId);
             if (user == null)
-                return ErrorResponse(Message.USER_NOT_FOUND.ToString());
+                return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
 
             if (user.Password != request.OldPassword)
                 return ErrorResponse(PasswordsInvalid);
@@ -167,13 +178,13 @@ public class UserService : BaseService
                 return ErrorResponse(PasswordsNotMatch);
 
             if (request.NewPassword == user.Password)
-                return ErrorResponse(PasswordSamePrevious);
+                return ErrorResponse(PasswordEqualsOld);
 
             user.Password = request.NewPassword;
 
             await repository.UpdatePassword(userId, user);
 
-            return SuccessResponse("PASSWORD", Message.SUCCESSFULLY_UPDATED.ToString());
+            return SuccessResponse("Senha", Message.SUCCESSFULLY_UPDATED.GetEnumDescription());
         }
         catch (Exception ex)
         {
@@ -191,16 +202,84 @@ public class UserService : BaseService
         {
             var userId = GetCurrentUserId();
             if (userId == Guid.Empty)
-                return ErrorResponse(Message.INVALID_OBJECT.ToString());
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
             using var repository = new UserRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
             var user = await repository.GetById(userId);
             if (user == null)
-                return ErrorResponse(Message.USER_NOT_FOUND.ToString());
+                return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
 
             var result = _mapper.Map<UserResponse>(user);
 
             return SuccessResponse(result);
+        }
+        catch (Exception ex)
+        {
+            return ErrorResponse(ex);
+        }
+    }
+
+    /// <summary>
+    /// Serviço para validar usuário e envio de código para resetar senhar
+    /// </summary>
+    /// <param name="request"></param>
+    /// <returns></returns>
+    public async Task<ResultValue> SendEmailWithCodeToResetPassword(UserSendEmailRequest request)
+    {
+        try
+        {
+            using var repository = new UserRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+            var user = await repository.GetByEmail(request.Email);
+            if (user == null)
+                return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
+
+            var code = Guid.NewGuid().ToString("N").ToUpper()[..8];
+            var message = $"{CodeVerification}: {code}";
+            var emailSend = _email.Send(request.Email, SubjectEmail, message);
+            if (!emailSend)
+                return ErrorResponse(Message.SEND_EMAIL_FAIL.GetEnumDescription());
+            
+            var resetPassword = user.ResetPassword = new ResetPasswordModel {Code = code};
+
+            await repository.UpdateCode(user.UserId, resetPassword);
+            return SuccessResponse("Controle Financeiro |", Message.SEND_EMAIL_SUCCESS.GetEnumDescription());
+        }
+        catch (Exception ex)
+        {
+            return ErrorResponse(ex);
+        }
+    }
+
+    /// <summary>
+    /// Serviço para validar usuário com código enviado e resetar senhar
+    /// </summary>
+    /// <param name="request"></param>
+    /// <returns></returns>
+    public async Task<ResultValue> ResetPassword(UserResetPasswordRequest request)
+    {
+        try
+        {
+            if (request == null || string.IsNullOrEmpty(request.Email))
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
+
+            using var repository = new UserRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+            var user = await repository.GetByEmail(request.Email);
+            if (user == null)
+                return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
+
+            if(user.ResetPassword?.Code != request.Code)
+                return ErrorResponse(Message.CODE_INVALID.GetEnumDescription());
+
+            if (user.Password == request.NewPassword)
+                return ErrorResponse(PasswordEqualsOld);
+
+            if (request.NewPassword != request.NewConfirmPassword)
+                return ErrorResponse(PasswordsNotMatch);
+
+            user.Password = request.NewPassword;
+            await repository.UpdatePassword(user.UserId, user);
+
+            return SuccessResponse(PasswordResetSuccess, ReturnPageLogin);
         }
         catch (Exception ex)
         {
@@ -220,7 +299,7 @@ public class UserService : BaseService
         {
             var userId = GetCurrentUserId();
             if (userId == Guid.Empty)
-                return ErrorResponse(Message.INVALID_OBJECT.ToString());
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
             using var repository = new UserRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
             var familyMembers = await repository.GetFamilyMembersByUserId(userId);
@@ -247,11 +326,11 @@ public class UserService : BaseService
         try
         {
             if (familyId == Guid.Empty)
-                return ErrorResponse(Message.INVALID_OBJECT.ToString());
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
             var userId = GetCurrentUserId();
             if (userId == Guid.Empty)
-                return ErrorResponse(Message.INVALID_OBJECT.ToString());
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
             using var repository = new UserRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
             var familyMember = await repository.GetFamilyMemberByUserId(userId, familyId);
@@ -278,14 +357,14 @@ public class UserService : BaseService
         try
         {
             if (request == null)
-                return ErrorResponse(Message.INVALID_OBJECT.ToString());
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
             using var repository = new UserRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
 
             var userId = GetCurrentUserId();
             var user = await repository.GetById(userId);
             if (user == null)
-                return ErrorResponse(Message.USER_NOT_FOUND.ToString());
+                return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
 
             var familyMember = new FamilyMemberModel
             {
@@ -299,7 +378,7 @@ public class UserService : BaseService
 
             await repository.UpdateFamilyMembers(userId, user);
 
-            return SuccessResponse("FAMILY_MEMBER", Message.SUCCESSFULLY_ADDED.ToString());
+            return SuccessResponse("Membro Familiar", Message.SUCCESSFULLY_ADDED.GetEnumDescription());
         }
         catch (Exception ex)
         {
@@ -318,14 +397,14 @@ public class UserService : BaseService
         try
         {
             if (familyId == Guid.Empty || request == null)
-                return ErrorResponse(Message.INVALID_OBJECT.ToString());
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
             using var repository = new UserRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
 
             var userId = GetCurrentUserId();
             var user = await repository.GetById(userId);
             if (user == null)
-                return ErrorResponse(Message.USER_NOT_FOUND.ToString());
+                return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
 
             var familyMember = user.FamilyMembers?.FirstOrDefault(f => f.FamilyId.Equals(familyId));
             if (familyMember == null)
@@ -338,7 +417,7 @@ public class UserService : BaseService
 
             await repository.UpdateFamilyMembers(userId, user);
 
-            return SuccessResponse("FAMILY_MEMBER", Message.SUCCESSFULLY_UPDATED.ToString());
+            return SuccessResponse("Membro Familiar", Message.SUCCESSFULLY_UPDATED.GetEnumDescription());
         }
         catch (Exception ex)
         {
@@ -357,14 +436,14 @@ public class UserService : BaseService
         try
         {
             if (familyId == Guid.Empty)
-                return ErrorResponse(Message.INVALID_OBJECT.ToString());
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
             using var repository = new UserRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
 
             var userId = GetCurrentUserId();
             var user = await repository.GetById(userId);
             if (user == null)
-                return ErrorResponse(Message.USER_NOT_FOUND.ToString());
+                return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
 
             var familyMember = user.FamilyMembers?.FirstOrDefault(f => f.FamilyId.Equals(familyId));
             if (familyMember == null)
@@ -374,7 +453,7 @@ public class UserService : BaseService
 
             await repository.UpdateFamilyMembers(userId, user);
 
-            return SuccessResponse("FAMILY_MEMBER", Message.SUCCESSFULLY_UPDATED.ToString());
+            return SuccessResponse("Membro Familiar", Message.SUCCESSFULLY_UPDATED.GetEnumDescription());
         }
         catch (Exception ex)
         {
@@ -392,14 +471,14 @@ public class UserService : BaseService
         try
         {
             if (familyId == Guid.Empty)
-                return ErrorResponse(Message.INVALID_OBJECT.ToString());
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
             using var repository = new UserRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
 
             var userId = GetCurrentUserId();
             var user = await repository.GetById(userId);
             if (user == null)
-                return ErrorResponse(Message.USER_NOT_FOUND.ToString());
+                return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
 
             var familyMember = user.FamilyMembers?.FirstOrDefault(f => f.FamilyId.Equals(familyId));
             if (familyMember == null)
@@ -408,7 +487,7 @@ public class UserService : BaseService
             user.FamilyMembers.Remove(familyMember);
             await repository.UpdateFamilyMembers(userId, user);
 
-            return SuccessResponse("FAMILY_MEMBER", Message.SUCCESSFULLY_DELETED.ToString());
+            return SuccessResponse("Membro Familiar", Message.SUCCESSFULLY_DELETED.GetEnumDescription());
         }
         catch (Exception ex)
         {

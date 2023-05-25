@@ -1,11 +1,10 @@
 ﻿using FinanceControl.Application.Services.Cards.Model.Enum;
-using FinanceControl.Extensions.BaseModel;
-using FinanceControl.Extensions.Enum;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Runtime.Serialization;
+using FinanceControl.Application.Extensions.BaseModel;
 using FinanceControl.Application.Extensions.Enum;
 
 namespace FinanceControl.Application.Services.Cards.Model;

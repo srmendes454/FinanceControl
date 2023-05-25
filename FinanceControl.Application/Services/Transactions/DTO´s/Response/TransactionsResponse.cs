@@ -1,5 +1,4 @@
-﻿using FinanceControl.Application.Services.Transactions.DTO_s.Request;
-using System;
+﻿using System;
 
 namespace FinanceControl.Application.Services.Transactions.DTO_s.Response
 {
@@ -11,6 +10,7 @@ namespace FinanceControl.Application.Services.Transactions.DTO_s.Response
         public string CashFlow { get; set; }
         public DateTime DatePurchase { get; set; }
         public TransactionsRepetitionResponse Repetition { get; set; }
+        public TransactionsAssignedResponse Assigned { get; set; }
     }
 
     public class TransactionsRepetitionResponse
@@ -26,5 +26,11 @@ namespace FinanceControl.Application.Services.Transactions.DTO_s.Response
         public Guid Id { get; set; }
         public string Name { get; set; }
         public string Color { get; set; }
+    }
+
+    public class TransactionsAssignedResponse
+    {
+        public Guid AssignedId { get; set; }
+        public string Name { get; set; }
     }
 }

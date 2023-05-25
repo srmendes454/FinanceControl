@@ -50,7 +50,8 @@ public class UserRepository : BaseRepository<UserModel>
                 UserId = u.UserId,
                 Name = u.Name,
                 Email = u.Email,
-                Password = u.Password
+                Password = u.Password,
+                ResetPassword = u.ResetPassword
             })
             .FirstOrDefaultAsync();
 
@@ -108,6 +109,25 @@ public class UserRepository : BaseRepository<UserModel>
             .Set(rec => rec.CellPhone, model.CellPhone)
             .Set(rec => rec.Occupation, model.Occupation)
             .Set(rec => rec.Thumbnail, model.Thumbnail)
+            .Set(p => p.UpdateDate, DateTime.UtcNow);
+
+        await UpdateOneAsync(update, filter);
+    }
+
+    /// <summary>
+    /// Insere o código de validação para redefinição de senha
+    /// </summary>
+    /// <param name="userId"></param>
+    /// <param name="resetPassword"></param>
+    /// <returns></returns>
+    public async Task UpdateCode(Guid userId, ResetPasswordModel resetPassword)
+    {
+        var filter = Builders<UserModel>.Filter
+            .Where(x => x.UserId.Equals(userId)
+                        && x.Active.Equals(true));
+
+        var update = Builders<UserModel>.Update
+            .Set(rec => rec.ResetPassword, resetPassword)
             .Set(p => p.UpdateDate, DateTime.UtcNow);
 
         await UpdateOneAsync(update, filter);

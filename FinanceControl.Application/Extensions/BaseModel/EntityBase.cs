@@ -3,7 +3,7 @@ using System.Runtime.Serialization;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
-namespace FinanceControl.Extensions.BaseModel;
+namespace FinanceControl.Application.Extensions.BaseModel;
 
 [DataContract]
 [BsonIgnoreExtraElements]

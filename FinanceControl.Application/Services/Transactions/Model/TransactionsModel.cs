@@ -3,13 +3,15 @@ using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Globalization;
 using System.Runtime.Serialization;
+using FinanceControl.Application.Extensions.BaseModel;
 
 namespace FinanceControl.Application.Services.Transactions.Model
 {
     [DataContract]
     [Table("Transaction")]
-    public class TransactionsModel
+    public class TransactionsModel : EntityBase
     {
         #region [ Constructor ]
         public TransactionsModel()
@@ -35,6 +37,10 @@ namespace FinanceControl.Application.Services.Transactions.Model
 
         [DataMember]
         [BsonIgnoreIfNull]
+        public DateTime ExpirationDate { get; set; }
+
+        [DataMember]
+        [BsonIgnoreIfNull]
         [BsonRepresentation(BsonType.String)]
         public TransactionsCashFlow CashFlow { get; set; }
 
@@ -50,6 +56,10 @@ namespace FinanceControl.Application.Services.Transactions.Model
         [DataMember]
         [BsonIgnoreIfNull]
         public PaymentDetailsModel PaymentDetails { get; set; }
+
+        [DataMember]
+        [BsonIgnoreIfNull]
+        public AssignedModel Assigned { get; set; }
         #endregion
     }
 
@@ -104,6 +114,30 @@ namespace FinanceControl.Application.Services.Transactions.Model
         [DataMember]
         [BsonIgnoreIfNull]
         public string Color { get; set; }
+        #endregion
+    }
+
+    public class AssignedModel
+    {
+        #region [ Constructor ]
+
+        public AssignedModel()
+        {
+        }
+
+        #endregion
+
+        #region [ Properties ]
+        [DataMember]
+        [BsonIgnoreIfNull]
+        [BsonElement("AssignedId")]
+        [BsonRepresentation(BsonType.String)]
+        public Guid AssignedId { get; set; }
+
+        [DataMember]
+        [BsonIgnoreIfNull]
+        public string Name { get; set; }
+
         #endregion
     }
 }

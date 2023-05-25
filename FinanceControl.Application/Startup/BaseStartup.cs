@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Text;
 using System.Xml.Linq;
 using FinanceControl.Application.Extensions.RequestContainer;
+using FinanceControl.Application.Extensions.Utils.Email;
 using FinanceControl.Extensions.AppSettings;
 using FinanceControl.Extensions.BaseEnvironment;
 using FinanceControl.WebApi.Extensions.Context;
@@ -29,9 +30,9 @@ namespace FinanceControl.Application.Startup;
 public class BaseStartup
 {
     #region [ Fields ]
-    public readonly string _apiName;
-    public readonly IConfiguration _configuration;
-    public readonly IWebHostEnvironment _env;
+    private readonly string _apiName;
+    private readonly IConfiguration _configuration;
+    private readonly IWebHostEnvironment _env;
     #endregion
 
     #region [ Constructor ]
@@ -116,12 +117,13 @@ public class BaseStartup
         services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
         services.AddDbContext<IContextMongoDBDatabase, ContextMongoDBDatabase>(ServiceLifetime.Singleton, ServiceLifetime.Singleton);
         services.AddSingleton<IAppSettings, AppSettings>();
-
-        // Container injetado cotendo os dados de userId
+        
+        services.AddScoped<IEmail, Email>();
         services.AddScoped<IRequestContainer>(a =>
         {
             var httpContext = services.BuildServiceProvider().GetService<IHttpContextAccessor>();
-            if (httpContext.HttpContext.Request.Path.Value.Equals("/v1/user/register") || httpContext.HttpContext.Request.Path.Value.Equals("/v1/user/login"))
+            var path = httpContext?.HttpContext?.Request?.Path.Value;
+            if (!string.IsNullOrEmpty(path) && (path.Equals("/v1/user/register") || path.Equals("/v1/user/login") || path.Equals("/v1/user/send-email") || path.Equals("/v1/user/reset-password")))
             {
                 return new RequestContainer();
             }

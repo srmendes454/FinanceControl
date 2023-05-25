@@ -9,7 +9,6 @@ using FinanceControl.Application.Extensions.BaseService;
 using FinanceControl.Application.Extensions.Enum;
 using FinanceControl.Application.Services.Cards.DTO_s;
 using FinanceControl.Extensions.AppSettings;
-using FinanceControl.Extensions.Enum;
 using ILogger = Serilog.ILogger;
 using FinanceControl.Application.Services.Cards.Model.Enum;
 using FinanceControl.Application.Services.Cards.Model;
@@ -110,8 +109,7 @@ public class CardService : BaseService
                 return ErrorResponse(CardNotFound);
 
             var result = _mapper.Map<CardResponse>(record);
-            var a = record.DateExpiration;
-            var d = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, a);
+            var d = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, record.DateExpiration);
             result.ClosingDay = d.AddDays(-7);
 
             return SuccessResponse(result);

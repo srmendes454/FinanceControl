@@ -1,7 +1,7 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Runtime.Serialization;
-using FinanceControl.Extensions.BaseModel;
+using FinanceControl.Application.Extensions.BaseModel;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Bson;
 
