@@ -4,13 +4,13 @@ namespace FinanceControl.Application.Extensions.Enum;
 
 public enum Message
 {
-    [Description("Adicionado com sucesso")]
+    [Description("adicionado com sucesso")]
     SUCCESSFULLY_ADDED,
 
-    [Description("Atualizado com sucesso")]
+    [Description("atualizado com sucesso")]
     SUCCESSFULLY_UPDATED,
 
-    [Description("Excluido com sucesso")]
+    [Description("excluido com sucesso")]
     SUCCESSFULLY_DELETED,
 
     [Description("Objeto Inválido")]
@@ -21,12 +21,6 @@ public enum Message
 
     [Description("Usuário não encontrado")]
     USER_NOT_FOUND,
-
-    [Description("Usuário ou senha incorreta")]
-    USER_PASSWORD_NOT_FOUND,
-
-    [Description("Você não tem permissão")]
-    USER_NOT_PERMISSION,
 
     [Description("Falha ao enviar email com seu código de validação. Tente novamente")]
     SEND_EMAIL_FAIL,

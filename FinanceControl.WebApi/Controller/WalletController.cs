@@ -1,11 +1,11 @@
 ﻿using FinanceControl.Extensions.AppSettings;
-using FinanceControl.Wallet.DTO_s.Request;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Threading.Tasks;
 using FinanceControl.Application.Extensions.ControllerBase;
 using FinanceControl.Application.Extensions.RequestContainer;
+using FinanceControl.Application.Services.Wallet.DTO_s.Request;
 using FinanceControl.Application.Services.Wallet.Service;
 
 namespace FinanceControl.Controller;
@@ -39,7 +39,7 @@ public class WalletController : BaseController
     public async Task<IActionResult> InsertCard([FromBody] WalletInsertRequest request)
     {
         using var service = new WalletService(_appSettings, _logger, _request.UserId);
-        return Ok(await service.InsertWallet(request));
+        return Ok(await service.Insert(request));
     }
 
     /// <summary>

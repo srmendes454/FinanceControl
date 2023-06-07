@@ -36,7 +36,7 @@ public class UserResetPasswordRequest
     public string Email { get; set; }
     public string Code { get; set; }
     public string NewPassword { get; set; }
-    public string NewConfirmPassword { get; set; }
+    public string confirmNewPassword { get; set; }
 }
 public class UserSendEmailRequest
 {

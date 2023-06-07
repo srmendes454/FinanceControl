@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace FinanceControl.Wallet.DTO_s.Response;
+namespace FinanceControl.Application.Services.Wallet.DTO_s.Response;
 
 public class WalletResponse
 {

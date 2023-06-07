@@ -2,8 +2,6 @@
 using FinanceControl.Application.Services.Wallet.Model;
 using FinanceControl.Application.Services.Wallet.Repository;
 using FinanceControl.Extensions.AppSettings;
-using FinanceControl.Wallet.DTO_s.Request;
-using FinanceControl.Wallet.DTO_s.Response;
 using MongoDB.Driver;
 using Serilog;
 using System;
@@ -11,6 +9,8 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using FinanceControl.Application.Extensions.BaseService;
 using FinanceControl.Application.Extensions.Enum;
+using FinanceControl.Application.Services.Wallet.DTO_s.Request;
+using FinanceControl.Application.Services.Wallet.DTO_s.Response;
 
 namespace FinanceControl.Application.Services.Wallet.Service;
 
@@ -29,7 +29,8 @@ public class WalletService : BaseService
 
     #region [ Messages ]
 
-    private const string WalletNotFound = "WALLET_NOT_FOUND";
+    private const string Wallet = "Carteira";
+    private const string WalletNotFound = "Carteira não encontrada";
 
     #endregion
 
@@ -40,39 +41,27 @@ public class WalletService : BaseService
     /// </summary>
     /// <param name="request"></param>
     /// <returns></returns>
-    public async Task<ResultValue> InsertWallet(WalletInsertRequest request)
+    public async Task<ResultValue> Insert(WalletInsertRequest request)
     {
         try
         {
             var userId = GetCurrentUserId();
             if (request == null)
-                return ErrorResponse(Message.INVALID_OBJECT.ToString());
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-            using var userRepository = new UserRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+            using var userRepository = new UserRepository(_appSettings.GetMongoDb(), _logger);
 
             var user = await userRepository.GetById(userId);
             if (user == null)
-                return ErrorResponse(Message.USER_NOT_FOUND.ToString());
+                return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
 
-            var model = new WalletModel
-            {
-                Name = request.Name,
-                Color = request.Color,
-                User = new WalletUserModel
-                {
-                    Name = user.Name,
-                    UserId = userId
-                },
-                CreatedBy = GetCurrentUserId(),
-                CreationDate = DateTime.Now,
-                Active = true
-            };
+            var model = new WalletModel(request.Name, request.Color, userId, user.Name);
 
-            using var repository = new WalletRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+            using var repository = new WalletRepository(_appSettings.GetMongoDb(), _logger);
 
             await repository.InsertOneAsync(model);
 
-            return SuccessResponse("WALLET", Message.SUCCESSFULLY_ADDED.ToString());
+            return SuccessResponse(Wallet, Message.SUCCESSFULLY_ADDED.GetEnumDescription());
         }
         catch (Exception ex)
         {
@@ -91,7 +80,7 @@ public class WalletService : BaseService
         {
             var userId = GetCurrentUserId();
             if (walletId == Guid.Empty && userId == Guid.Empty)
-                return ErrorResponse(Message.INVALID_OBJECT.ToString());
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
             using var repository = new WalletRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
 
@@ -122,7 +111,7 @@ public class WalletService : BaseService
 
             var list = await repository.GetAllByUser(userId);
             if (list == null)
-                return ErrorResponse(Message.LIST_EMPTY.ToString());
+                return ErrorResponse(Message.LIST_EMPTY.GetEnumDescription());
 
             var result = _mapper.Map<List<WalletResponse>>(list);
 
@@ -145,8 +134,8 @@ public class WalletService : BaseService
         try
         {
             var userId = GetCurrentUserId();
-            if (walletId == Guid.Empty && userId == Guid.Empty)
-                return ErrorResponse(Message.INVALID_OBJECT.ToString());
+            if (walletId == Guid.Empty || userId == Guid.Empty || request.Equals(null))
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
             using var repository = new WalletRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
 
@@ -154,13 +143,11 @@ public class WalletService : BaseService
             if (model == null)
                 return ErrorResponse(WalletNotFound);
 
-            model.Name = request.Name;
-            model.Color = request.Color;
-            model.UpdateDate = DateTime.Now;
+            model.Update(request.Name, request.Color);
 
             await repository.Update(walletId, model);
 
-            return SuccessResponse("WALLET", Message.SUCCESSFULLY_UPDATED.ToString());
+            return SuccessResponse(Wallet, Message.SUCCESSFULLY_UPDATED.GetEnumDescription());
         }
         catch (Exception ex)
         {
@@ -179,18 +166,13 @@ public class WalletService : BaseService
         {
             var userId = GetCurrentUserId();
             if (walletId == Guid.Empty && userId == Guid.Empty)
-                return ErrorResponse(Message.INVALID_OBJECT.ToString());
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
             using var repository = new WalletRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
 
-            var filter = Builders<WalletModel>.Filter
-                .Where(x => x.WalletId.Equals(walletId)
-                            && x.User.UserId.Equals(userId)
-                            && x.Active.Equals(true));
+            await repository.Delete(walletId, userId);
 
-            await repository.DeleteOneAsync(filter);
-
-            return SuccessResponse("WALLET", Message.SUCCESSFULLY_DELETED.ToString());
+            return SuccessResponse(Wallet, Message.SUCCESSFULLY_DELETED.GetEnumDescription());
         }
         catch (Exception ex)
         {
@@ -209,13 +191,13 @@ public class WalletService : BaseService
         {
             var userId = GetCurrentUserId();
             if (walletId == Guid.Empty && userId == Guid.Empty)
-                return ErrorResponse(Message.INVALID_OBJECT.ToString());
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
             using var repository = new WalletRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
 
             await repository.UpdateActive(walletId, userId);
 
-            return SuccessResponse("WALLET", Message.SUCCESSFULLY_UPDATED.ToString());
+            return SuccessResponse(Wallet, Message.SUCCESSFULLY_UPDATED.GetEnumDescription());
         }
         catch (Exception ex)
         {
@@ -234,13 +216,13 @@ public class WalletService : BaseService
         {
             var userId = GetCurrentUserId();
             if (walletId == Guid.Empty && userId == Guid.Empty)
-                return ErrorResponse(Message.INVALID_OBJECT.ToString());
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
             using var repository = new WalletRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
 
             await repository.UpdateInactive(walletId, userId);
 
-            return SuccessResponse("WALLET", Message.SUCCESSFULLY_UPDATED.ToString());
+            return SuccessResponse(Wallet, Message.SUCCESSFULLY_UPDATED.GetEnumDescription());
         }
         catch (Exception ex)
         {

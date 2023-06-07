@@ -13,9 +13,20 @@ namespace FinanceControl.Application.Services.User.Model;
 public class UserModel : EntityBase
 {
     #region [ Constructor ]
+
     public UserModel()
     {
+        
+    }
+
+    public UserModel(string name, string email, string password)
+    {
         UserId = Guid.NewGuid();
+        Name = name;
+        Email = email;
+        Password = password;
+        CreationDate = DateTime.UtcNow;
+        Active = true;
     }
     #endregion
 
@@ -63,9 +74,17 @@ public class UserModel : EntityBase
 
     #region [ Public Methods ]
 
-    public void A()
+    public void Update(string name, string cellPhone, string occupation, byte[] thumbnail)
     {
-        ResetPassword = new ResetPasswordModel();
+        Name = name;
+        CellPhone = cellPhone;
+        Occupation = occupation;
+        Thumbnail = thumbnail;
+    }
+
+    public void UpdatePassword(string password)
+    {
+        Password = password;
     }
     #endregion
 }

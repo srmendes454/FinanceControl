@@ -1,4 +1,4 @@
-﻿namespace FinanceControl.Wallet.DTO_s.Request;
+﻿namespace FinanceControl.Application.Services.Wallet.DTO_s.Request;
 
 public class WalletInsertRequest
 {

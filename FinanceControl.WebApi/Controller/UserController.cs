@@ -42,7 +42,7 @@ public class UserController : BaseController
     public async Task<IActionResult> RegisterUser([FromBody] UserInsertRequest request)
     {
         using var service = new UserService(_appSettings, _logger, Guid.Empty, _email);
-        return Ok(await service.RegisterUser(request));
+        return Ok(await service.Register(request));
     }
 
     /// <summary>
@@ -69,7 +69,7 @@ public class UserController : BaseController
     public async Task<IActionResult> UpdateUser([FromBody] UserUpdateRequest request)
     {
         using var service = new UserService(_appSettings, _logger, _request.UserId, _email);
-        return Ok(await service.UpdateUser(request));
+        return Ok(await service.Update(request));
     }
 
     /// <summary>
@@ -82,7 +82,7 @@ public class UserController : BaseController
     public async Task<IActionResult> UpdatePasswordUser([FromBody] UserPasswordRequest request)
     {
         using var service = new UserService(_appSettings, _logger, _request.UserId, _email);
-        return Ok(await service.UpdatePasswordUser(request));
+        return Ok(await service.UpdatePassword(request));
     }
 
     /// <summary>

@@ -41,11 +41,15 @@ public class UserService : BaseService
     private const string PasswordsInvalid = "Senha inválida";
     private const string PasswordEqualsOld = "A senha não pode ser igual a anterior";
     private const string PasswordResetSuccess = "Senha redefinida com sucesso.";
-    private const string ReturnPageLogin = "Retorne a pagina de Login para entrar com sua nova senha.";
-    private const string CodeVerification = "Seu código de verificação é";
+    private const string ReturnPageLogin = "Você será redirecionado para a pagina de Login para entrar com sua nova senha.";
+    private const string AccountExists = "Já existe uma conta vinculada a esse email";
     private const string FamilyMembersNotFound = "Nenhum membro familiar foi encontrado";
     private const string FamilyMemberNotFound = "Membro familiar não encontrado";
     private const string SubjectEmail = "Controle Financeiro | Código para redefinição de senha";
+    private const string SubjectEmailResetPassword = "Código para redefinição de senha";
+    private const string AlertEmailResetPassword = "Caso não tenha solicitado a redefinição de sua senha, favor desconsiderar esse email";
+    private const string SubjectEmailWelcome = "Bem-vindo ao seu 'Controle Financeiro' ";
+    private const string AlertEmailWelcome = "Sua plataforma para melhor gestão de suas finanças";
 
     #endregion
 
@@ -56,28 +60,34 @@ public class UserService : BaseService
     /// </summary>
     /// <param name="request"></param>
     /// <returns></returns>
-    public async Task<ResultValue> RegisterUser(UserInsertRequest request)
+    public async Task<ResultValue> Register(UserInsertRequest request)
     {
         try
         {
             if (request == null)
                 return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
+            using var repository = new UserRepository(_appSettings.GetMongoDb(), _logger);
+            var userExist = await repository.UserExistByEmail(request.Email);
+            if (userExist)
+                return ErrorResponse(AccountExists);
+
             if (request.Password != request.ConfirmPassword)
                 return ErrorResponse(PasswordsNotMatch);
 
-            var model = new UserModel
-            {
-                Name = request.Name,
-                Email = request.Email,
-                Password = request.Password,
-                CreationDate = DateTime.Now,
-                Active = true
-            };
-
-            using var repository = new UserRepository(_appSettings.GetMongoDb(), _logger);
+            var model = new UserModel(request.Name, request.Email, request.Password);
 
             await repository.InsertOneAsync(model);
+
+            try
+            {
+                var template = _email.TemplateWelcome(model.Name, SubjectEmailWelcome, AlertEmailWelcome);
+                _email.Send(request.Email, SubjectEmail, template);
+            }
+            catch (Exception)
+            {
+                //ignored
+            }
 
             return SuccessResponse("Usuário", Message.SUCCESSFULLY_ADDED.GetEnumDescription());
         }
@@ -123,7 +133,7 @@ public class UserService : BaseService
     /// </summary>
     /// <param name="request"></param>
     /// <returns></returns>
-    public async Task<ResultValue> UpdateUser(UserUpdateRequest request)
+    public async Task<ResultValue> Update(UserUpdateRequest request)
     {
         try
         {
@@ -137,10 +147,7 @@ public class UserService : BaseService
             if (user == null)
                 return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
 
-            user.Thumbnail = request.Thumbnail ?? user.Thumbnail;
-            user.CellPhone = request.CellPhone ?? user.CellPhone;
-            user.Occupation = request.Occupation ?? user.Occupation;
-            user.Name = request.Name ?? user.Name;
+            user.Update(request.Name, request.CellPhone, request.Occupation, request.Thumbnail);
 
             await repository.Update(userId, user);
 
@@ -157,7 +164,7 @@ public class UserService : BaseService
     /// </summary>
     /// <param name="request"></param>
     /// <returns></returns>
-    public async Task<ResultValue> UpdatePasswordUser(UserPasswordRequest request)
+    public async Task<ResultValue> UpdatePassword(UserPasswordRequest request)
     {
         try
         {
@@ -180,7 +187,7 @@ public class UserService : BaseService
             if (request.NewPassword == user.Password)
                 return ErrorResponse(PasswordEqualsOld);
 
-            user.Password = request.NewPassword;
+            user.UpdatePassword(request.NewPassword);
 
             await repository.UpdatePassword(userId, user);
 
@@ -234,8 +241,9 @@ public class UserService : BaseService
                 return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
 
             var code = Guid.NewGuid().ToString("N").ToUpper()[..8];
-            var message = $"{CodeVerification}: {code}";
-            var emailSend = _email.Send(request.Email, SubjectEmail, message);
+            var template = _email.TemplateResetPassword(user.Name, SubjectEmailResetPassword, AlertEmailResetPassword, code);
+            
+            var emailSend = _email.Send(request.Email, SubjectEmail, template);
             if (!emailSend)
                 return ErrorResponse(Message.SEND_EMAIL_FAIL.GetEnumDescription());
             
@@ -273,7 +281,7 @@ public class UserService : BaseService
             if (user.Password == request.NewPassword)
                 return ErrorResponse(PasswordEqualsOld);
 
-            if (request.NewPassword != request.NewConfirmPassword)
+            if (request.NewPassword != request.confirmNewPassword)
                 return ErrorResponse(PasswordsNotMatch);
 
             user.Password = request.NewPassword;

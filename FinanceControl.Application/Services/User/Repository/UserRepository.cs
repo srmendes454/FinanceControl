@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using ILogger = Serilog.ILogger;
 
 namespace FinanceControl.Application.Services.User.Repository;
@@ -56,6 +57,25 @@ public class UserRepository : BaseRepository<UserModel>
             .FirstOrDefaultAsync();
 
         return result;
+    }
+
+    /// <summary>
+    /// Verifica se já existe conta cadastrada pelo email
+    /// </summary>
+    /// <param name="email"></param>
+    /// <returns></returns>
+    public async Task<bool> UserExistByEmail(string email)
+    {
+        var filter = Builders<UserModel>.Filter
+            .Where(p => p.Email.Equals(email));
+
+        var record = await GetUserCollection()
+            .Aggregate()
+            .Match(filter)
+            .Project(u => new UserModel { Email = u.Email })
+            .AnyAsync();
+
+        return record;
     }
 
     /// <summary>

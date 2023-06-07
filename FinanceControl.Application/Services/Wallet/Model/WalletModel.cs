@@ -12,9 +12,17 @@ namespace FinanceControl.Application.Services.Wallet.Model;
 public class WalletModel : EntityBase
 {
     #region [ Constructor ]
-    public WalletModel()
+    public WalletModel(){}
+
+    public WalletModel(string name, string color,  Guid userId, string userName)
     {
         WalletId = Guid.NewGuid();
+        Name = name;
+        Color = color;
+        Active = true;
+        CreationDate = DateTime.UtcNow;
+        CreatedBy = userId;
+        User = new WalletUserModel(userId, userName);
     }
     #endregion
 
@@ -39,13 +47,27 @@ public class WalletModel : EntityBase
     public WalletUserModel User { get; set; }
     #endregion
 
+    #region [ Public Methods ]
+
+    public void Update(string name, string color)
+    {
+        Name = name;
+        Color = color;
+        UpdateDate = DateTime.UtcNow;
+    }
+
+    #endregion
 }
 
 public class WalletUserModel
 {
     #region [ Constructor ]
 
-
+    public WalletUserModel(Guid userId, string name)
+    {
+        UserId = userId;
+        Name = name;
+    }
 
     #endregion
 

@@ -149,5 +149,21 @@ public class WalletRepository : BaseRepository<WalletModel>
 
         await UpdateOneAsync(update, filter);
     }
+
+    /// <summary>
+    /// Exclui uma Carteira
+    /// </summary>
+    /// <param name="walletId"></param>
+    /// <param name="userId"></param>
+    /// <returns></returns>
+    public async Task Delete(Guid walletId, Guid userId)
+    {
+        var filter = Builders<WalletModel>.Filter
+            .Where(x => x.WalletId.Equals(walletId)
+                        && x.User.UserId.Equals(userId)
+                        && x.Active.Equals(true));
+
+        await DeleteOneAsync(filter);
+    }
     #endregion
 }
