@@ -119,5 +119,57 @@ public class WalletController : BaseController
         using var service = new WalletService(_appSettings, _logger, _request.UserId);
         return Ok(await service.Inactive(walletId));
     }
+
+    #region [ Optimize Income ]
+
+    /// <summary>
+    /// Serviço para Obter todas as Divisões de Renda por Carteira
+    /// </summary>
+    /// <returns></returns>
+    [HttpGet("/v1/wallet/{walletId}/optimize-income")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAllOptimizeIncome([FromRoute] Guid walletId)
+    {
+        using var service = new WalletService(_appSettings, _logger, _request.UserId);
+        return Ok(await service.GetAllOptimizeIncome(walletId));
+    }
+
+    /// <summary>
+    /// Serviço para Obtem uma Divisão da Renda por Carteira
+    /// </summary>
+    /// <returns></returns>
+    [HttpGet("/v1/wallet/{walletId}/optimize-income/{optimizeIncomeId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetOptimizeIncomeById([FromRoute] Guid walletId, [FromRoute] Guid optimizeIncomeId)
+    {
+        using var service = new WalletService(_appSettings, _logger, _request.UserId);
+        return Ok(await service.GetOptimizeIncomeById(walletId, optimizeIncomeId));
+    }
+
+    /// <summary>
+    /// Serviço para atualiza uma Divisão de Renda
+    /// </summary>
+    /// <returns></returns>
+    [HttpPut("/v1/wallet/{walletId}/optimize-income/{optimizeIncomeId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateOptimizeIncome([FromRoute] Guid walletId, [FromRoute] Guid optimizeIncomeId, [FromBody] OptimizeIncomeRequest request)
+    {
+        using var service = new WalletService(_appSettings, _logger, _request.UserId);
+        return Ok(await service.UpdateOptimizeIncome(walletId, optimizeIncomeId, request));
+    }
+
+    /// <summary>
+    /// Serviço para deletar uma Divisão de Renda
+    /// </summary>
+    /// <returns></returns>
+    [HttpDelete("/v1/wallet/{walletId}/optimize-income/{optimizeIncomeId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> DeleteOptimizeIncome([FromRoute] Guid walletId, [FromRoute] Guid optimizeIncomeId)
+    {
+        using var service = new WalletService(_appSettings, _logger, _request.UserId);
+        return Ok(await service.DeleteOptimizeIncome(walletId, optimizeIncomeId));
+    }
+
+    #endregion
     #endregion
 }

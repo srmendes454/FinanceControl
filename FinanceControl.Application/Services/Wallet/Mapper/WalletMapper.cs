@@ -18,6 +18,8 @@ public class WalletMapper : Profile
         #region [ Response ]
 
         CreateMap<WalletModel, WalletResponse>();
+        CreateMap<WalletModel, OptimizeIncomeResponse>();
+        CreateMap<OptimizeIncomeModel, OptimizeIncomeResponse>();
 
         #endregion
     }

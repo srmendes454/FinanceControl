@@ -5,6 +5,7 @@ using MongoDB.Driver;
 using Serilog;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace FinanceControl.Application.Services.Wallet.Repository;
@@ -54,7 +55,8 @@ public class WalletRepository : BaseRepository<WalletModel>
             {
                 WalletId = w.WalletId,
                 Name = w.Name,
-                Color = w.Color
+                Color = w.Color,
+                Income = w.Income
             })
             .FirstOrDefaultAsync();
 
@@ -83,7 +85,8 @@ public class WalletRepository : BaseRepository<WalletModel>
             {
                 WalletId = w.WalletId,
                 Name = w.Name,
-                Color = w.Color
+                Color = w.Color,
+                Income = w.Income
             })
             .ToListAsync();
 
@@ -105,6 +108,7 @@ public class WalletRepository : BaseRepository<WalletModel>
         var update = Builders<WalletModel>.Update
             .Set(rec => rec.Name, model.Name)
             .Set(rec => rec.Color, model.Color)
+            .Set(rec => rec.Income, model.Income)
             .Set(p => p.UpdateDate, model.UpdateDate);
 
         await UpdateOneAsync(update, filter);
@@ -165,5 +169,90 @@ public class WalletRepository : BaseRepository<WalletModel>
 
         await DeleteOneAsync(filter);
     }
+
+    #region [ Optimize Income ]
+
+    /// <summary>
+    /// Obtem as Divisões da Renda por Carteira
+    /// </summary>
+    /// <param name="walletId"></param>
+    /// <returns></returns>
+    public async Task<List<OptimizeIncomeModel>> GetAllByWallet(Guid walletId)
+    {
+        var filter = Builders<WalletModel>.Filter
+            .Where(p => p.WalletId.Equals(walletId)
+                        && p.Active.Equals(true));
+
+        var sort = Builders<WalletModel>.Sort
+            .Ascending(x => x.CreationDate);
+
+        var query = await GetWalletCollection()
+            .Aggregate()
+            .Match(filter)
+            .Sort(sort)
+            .Project(w => new WalletModel
+            {
+                WalletId = w.WalletId,
+                OptimizeIncome = w.OptimizeIncome
+            })
+            .ToListAsync();
+
+        var result = query.SelectMany(_ => _.OptimizeIncome ?? new List<OptimizeIncomeModel>()).ToList();
+
+        return result;
+    }
+
+    /// <summary>
+    /// Obtem uma Divisão da Renda por Carteira
+    /// </summary>
+    /// <param name="walletId"></param>
+    /// <param name="optimizeIncomeId"></param>
+    /// <returns></returns>
+    public async Task<OptimizeIncomeModel> GetOptimizeIncomeById(Guid walletId, Guid optimizeIncomeId)
+    {
+        var filter = Builders<WalletModel>.Filter
+            .Where(p => p.WalletId.Equals(walletId)
+                        && p.Active.Equals(true));
+
+        var sort = Builders<WalletModel>.Sort
+            .Ascending(x => x.CreationDate);
+
+        var query = await GetWalletCollection()
+            .Aggregate()
+            .Match(filter)
+            .Sort(sort)
+            .Project(w => new WalletModel
+            {
+                WalletId = w.WalletId,
+                OptimizeIncome = w.OptimizeIncome
+            })
+            .ToListAsync();
+
+        var optimizeIncomes = query.SelectMany(_ => _.OptimizeIncome ?? new List<OptimizeIncomeModel>()).ToList();
+        var result = optimizeIncomes.FirstOrDefault(oi => oi.OptimizeIncomeId.Equals(optimizeIncomeId));
+
+        return result;
+    }
+
+    /// <summary>
+    /// Atualiza dados da Lista
+    /// </summary>
+    /// <param name="walletId"></param>
+    /// <param name="optimizeIncome"></param>
+    /// <returns></returns>
+    public async Task UpdateOptimizeIncome(Guid walletId, List<OptimizeIncomeModel> optimizeIncome)
+    {
+        var filter = Builders<WalletModel>.Filter
+            .Where(x => x.WalletId.Equals(walletId)
+                        && x.Active.Equals(true));
+
+        var update = Builders<WalletModel>.Update
+            .Set(rec => rec.OptimizeIncome, optimizeIncome)
+            .Set(p => p.UpdateDate, DateTime.Now);
+
+        await UpdateOneAsync(update, filter);
+    }
+
+    #endregion
     #endregion
 }

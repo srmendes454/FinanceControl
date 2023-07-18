@@ -2,10 +2,10 @@
 
 namespace FinanceControl.Application.Services.Wallet.DTO_s.Response;
 
-public class WalletResponse
+public class OptimizeIncomeResponse
 {
-    public Guid WalletId { get; set; }
+    public Guid OptimizeIncomeId { get; set; }
     public string Name { get; set; }
     public string Color { get; set; }
-    public double Income { get; set; }
+    public int Percent { get; set; }
 }

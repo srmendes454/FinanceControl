@@ -250,7 +250,7 @@ public class UserService : BaseService
             var resetPassword = user.ResetPassword = new ResetPasswordModel {Code = code};
 
             await repository.UpdateCode(user.UserId, resetPassword);
-            return SuccessResponse("Controle Financeiro |", Message.SEND_EMAIL_SUCCESS.GetEnumDescription());
+            return SuccessResponse(code, "Controle Financeiro |", Message.SEND_EMAIL_SUCCESS.GetEnumDescription());
         }
         catch (Exception ex)
         {
@@ -275,13 +275,10 @@ public class UserService : BaseService
             if (user == null)
                 return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
 
-            if(user.ResetPassword?.Code != request.Code)
-                return ErrorResponse(Message.CODE_INVALID.GetEnumDescription());
-
             if (user.Password == request.NewPassword)
                 return ErrorResponse(PasswordEqualsOld);
 
-            if (request.NewPassword != request.confirmNewPassword)
+            if (request.NewPassword != request.ConfirmNewPassword)
                 return ErrorResponse(PasswordsNotMatch);
 
             user.Password = request.NewPassword;

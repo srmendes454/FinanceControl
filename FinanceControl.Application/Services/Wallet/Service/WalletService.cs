@@ -6,11 +6,13 @@ using MongoDB.Driver;
 using Serilog;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using FinanceControl.Application.Extensions.BaseService;
 using FinanceControl.Application.Extensions.Enum;
 using FinanceControl.Application.Services.Wallet.DTO_s.Request;
 using FinanceControl.Application.Services.Wallet.DTO_s.Response;
+using System.Runtime.ConstrainedExecution;
 
 namespace FinanceControl.Application.Services.Wallet.Service;
 
@@ -31,6 +33,8 @@ public class WalletService : BaseService
 
     private const string Wallet = "Carteira";
     private const string WalletNotFound = "Carteira não encontrada";
+    private const string OptimizeIncomeNotFound = "Repartição não encontrada";
+    private const string OptimizeIncome = "Repartição";
 
     #endregion
 
@@ -55,7 +59,8 @@ public class WalletService : BaseService
             if (user == null)
                 return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
 
-            var model = new WalletModel(request.Name, request.Color, userId, user.Name);
+            var optimizeIncome = GenerateMethod20_30_50();
+            var model = new WalletModel(request.Name, request.Color, request.Income, userId, user.Name, optimizeIncome);
 
             using var repository = new WalletRepository(_appSettings.GetMongoDb(), _logger);
 
@@ -143,7 +148,7 @@ public class WalletService : BaseService
             if (model == null)
                 return ErrorResponse(WalletNotFound);
 
-            model.Update(request.Name, request.Color);
+            model.Update(request.Name, request.Color, request.Income);
 
             await repository.Update(walletId, model);
 
@@ -230,11 +235,147 @@ public class WalletService : BaseService
         }
     }
 
+    #region [ Optimize Income ]
+
+    /// <summary>
+    /// Serviço para Obter todas as Divisões de Renda por Carteira
+    /// </summary>
+    /// <param name="walletId"></param>
+    /// <returns></returns>
+    public async Task<ResultValue> GetAllOptimizeIncome(Guid walletId)
+    {
+        try
+        {
+            using var repository = new WalletRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+
+            var list = await repository.GetAllByWallet(walletId);
+            if (list == null)
+                return ErrorResponse(Message.LIST_EMPTY.GetEnumDescription());
+
+            var result = _mapper.Map<List<OptimizeIncomeResponse>>(list);
+
+            return SuccessResponse(result);
+        }
+        catch (Exception ex)
+        {
+            return ErrorResponse(ex);
+        }
+    }
+
+    /// <summary>
+    /// Serviço para Obtem uma Divisão da Renda por Carteira
+    /// </summary>
+    /// <param name="walletId"></param>
+    /// <param name="optimizeIncomeId"></param>
+    /// <returns></returns>
+    public async Task<ResultValue> GetOptimizeIncomeById(Guid walletId, Guid optimizeIncomeId)
+    {
+        try
+        {
+            if (walletId == Guid.Empty && optimizeIncomeId == Guid.Empty)
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
+
+            using var repository = new WalletRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+
+            var record = await repository.GetOptimizeIncomeById(walletId, optimizeIncomeId);
+            if (record == null)
+                return ErrorResponse(OptimizeIncomeNotFound);
+
+            var result = _mapper.Map<OptimizeIncomeResponse>(record);
+
+            return SuccessResponse(result);
+        }
+        catch (Exception ex)
+        {
+            return ErrorResponse(ex);
+        }
+    }
+
+    /// <summary>
+    /// Serviço para atualiza uma Divisão de Renda
+    /// </summary>
+    /// <param name="walletId"></param>
+    /// <param name="optimizeIncomeId"></param>
+    /// <param name="request"></param>
+    /// <returns></returns>
+    public async Task<ResultValue> UpdateOptimizeIncome(Guid walletId, Guid optimizeIncomeId, OptimizeIncomeRequest request)
+    {
+        try
+        {
+            if (walletId == Guid.Empty || optimizeIncomeId == Guid.Empty || request.Equals(null))
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
+
+            using var repository = new WalletRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+
+            var list = await repository.GetAllByWallet(walletId);
+            if (list == null)
+                return ErrorResponse(Message.LIST_EMPTY.GetEnumDescription());
+
+            list.ForEach(x =>
+            {
+                if (x.OptimizeIncomeId == optimizeIncomeId)
+                    x.Update(request.Name, request.Color, request.Percent);
+            });
+
+            await repository.UpdateOptimizeIncome(walletId, list);
+
+            return SuccessResponse(OptimizeIncome, Message.SUCCESSFULLY_UPDATED.GetEnumDescription());
+        }
+        catch (Exception ex)
+        {
+            return ErrorResponse(ex);
+        }
+    }
+
+    /// <summary>
+    /// Serviço para deletar uma Divisão de Renda
+    /// </summary>
+    /// <param name="walletId"></param>
+    /// <param name="optimizeIncomeId"></param>
+    /// <returns></returns>
+    public async Task<ResultValue> DeleteOptimizeIncome(Guid walletId, Guid optimizeIncomeId)
+    {
+        try
+        {
+            if (walletId == Guid.Empty || optimizeIncomeId == Guid.Empty)
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
+
+            using var repository = new WalletRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+
+            var list = await repository.GetAllByWallet(walletId);
+            if (list == null)
+                return ErrorResponse(Message.LIST_EMPTY.GetEnumDescription());
+
+            var optimizeIncome = list.FirstOrDefault(x => x.OptimizeIncomeId.Equals(optimizeIncomeId));
+            if (optimizeIncome == null)
+                return ErrorResponse(OptimizeIncomeNotFound);
+
+            list.Remove(optimizeIncome);
+            await repository.UpdateOptimizeIncome(walletId, list);
+
+            return SuccessResponse(OptimizeIncome, Message.SUCCESSFULLY_DELETED.GetEnumDescription());
+        }
+        catch (Exception ex)
+        {
+            return ErrorResponse(ex);
+        }
+    }
+
+    #endregion
+
     #endregion
 
     #region [ Private Methods ]
 
-
+    private static List<OptimizeIncomeModel> GenerateMethod20_30_50()
+    {
+        return new List<OptimizeIncomeModel>
+        {
+            new OptimizeIncomeModel("Essencial", "#1875FF", 50),
+            new OptimizeIncomeModel("Lazer", "#04C300", 30),
+            new OptimizeIncomeModel("Investimento", "#F39200", 20)
+        };
+    }
 
     #endregion
 }

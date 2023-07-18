@@ -111,6 +111,18 @@ public class BaseService : IDisposable
             TokenValidTotalMinutesTo = GetTokenValidTotalMinutesTo()
         };
     }
+    protected ResultValue SuccessResponse<T>(T data, string name, string message)
+    {
+        return new ResultValue<T>
+        {
+            Data = data,
+            Success = true,
+            Message = $"{name} {message}",
+            Router = GetRouterName(),
+            Environment = GetEnvironmentName(),
+            TokenValidTotalMinutesTo = GetTokenValidTotalMinutesTo()
+        };
+    }
     protected ResultValue ErrorResponse(Exception ex)
     {
         _appSettings.GetLogger().Error("ErrorResponse :: {Message} :: {StackTrace}", ex.Message, ex.StackTrace);
