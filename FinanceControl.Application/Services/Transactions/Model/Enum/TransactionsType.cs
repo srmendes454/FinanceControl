@@ -4,24 +4,24 @@ namespace FinanceControl.Application.Services.Transactions.Model.Enum;
 
 public enum TransactionsType
 {
-    [Description("CREDIT_CARD")]
+    [Description("Crédito")]
     CREDIT_CARD,
 
-    [Description("DEBIT_CARD")]
+    [Description("Débito")]
     DEBIT_CARD,
 
-    [Description("BANK_SLIP")]
+    [Description("Boleto")]
     BANK_SLIP,
 
     [Description("PIX")]
     PIX,
 
-    [Description("BANK_TRANSFER")]
+    [Description("TED")]
     BANK_TRANSFER,
 
-    [Description("WITHDRAW_MONEY")]
-    WITHDRAW_MONEY,
+    [Description("Saque")]
+    WITHDRAW,
 
-    [Description("INVESTMENT")]
+    [Description("Investimento")]
     INVESTMENT
 }

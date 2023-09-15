@@ -29,8 +29,9 @@ public class CardService : BaseService
 
     #region [ Messages ]
 
-    private const string WalletNotFound = "WALLET_NOT_FOUND";
-    private const string CardNotFound = "CARD_NOT_FOUND";
+    private const string WalletNotFound = "Carteira não encontrada";
+    private const string CardNotFound = "Cartão não encontrado";
+    private const string Card = "Cartão";
 
     #endregion
 
@@ -57,30 +58,15 @@ public class CardService : BaseService
             if (wallet == null)
                 return ErrorResponse(WalletNotFound);
 
-            var model = new CardModel
-            {
-                Name = request.Name,
-                Color = request.Color,
-                Number = request.Number,
-                DateExpiration = request.DateExpiration,
-                AvailableLimit = request.AvailableLimit,
-                CardType = Enum.Parse<CardType>(request.CardType),
-                Status = Status.TO_WIN,
-                Wallet = new CardWalletModel
-                {
-                    WalletId = wallet.WalletId,
-                    Name = wallet.Name
-                },
-                CreatedBy = GetCurrentUserId(),
-                CreationDate = DateTime.Now,
-                Active = true
-            };
+            var date = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, request.DateExpiration);
+            var closingDay = date.AddDays(-6);
+            var model = new CardModel(userId, request.Name, request.Color, request.DateExpiration, closingDay.Day, Status.CREATED, Enum.Parse<CardType>(request.Type), new CardWalletModel(wallet.WalletId, wallet.Name));
 
             using var repository = new CardRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
 
             await repository.InsertOneAsync(model);
 
-            return SuccessResponse("CARD", Message.SUCCESSFULLY_ADDED.ToString());
+            return SuccessResponse(Card, Message.SUCCESSFULLY_ADDED.ToString());
         }
         catch (Exception ex)
         {
@@ -109,8 +95,6 @@ public class CardService : BaseService
                 return ErrorResponse(CardNotFound);
 
             var result = _mapper.Map<CardResponse>(record);
-            var d = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, record.DateExpiration);
-            result.ClosingDay = d.AddDays(-7);
 
             return SuccessResponse(result);
         }
@@ -163,10 +147,7 @@ public class CardService : BaseService
     {
         try
         {
-            if (request == null)
-                return ErrorResponse(Message.INVALID_OBJECT.ToString());
-
-            if (cardId == Guid.Empty && request.WalletId == Guid.Empty)
+            if (request == null || cardId == Guid.Empty || request.WalletId == Guid.Empty)
                 return ErrorResponse(Message.INVALID_OBJECT.ToString());
 
             using var repository = new CardRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
@@ -175,16 +156,42 @@ public class CardService : BaseService
             if (model == null)
                 return ErrorResponse(CardNotFound);
 
-            model.Name = request.Name;
-            model.Number = request.Number;
-            model.Color = request.Color;
-            model.DateExpiration = request.DateExpiration;
-            model.AvailableLimit = request.AvailableLimit;
-            model.CardType = Enum.Parse<CardType>(request.CardType);
+            model.Update(request.Name, request.Color, request.DateExpiration, Enum.Parse<CardType>(request.Type));
 
             await repository.Update(request.WalletId, model);
 
-            return SuccessResponse("CARD", Message.SUCCESSFULLY_UPDATED.ToString());
+            return SuccessResponse(Card, Message.SUCCESSFULLY_UPDATED.ToString());
+        }
+        catch (Exception ex)
+        {
+            return ErrorResponse(ex);
+        }
+    }
+
+    /// <summary>
+    /// Serviço para atualizar o pagamento de um Cartão
+    /// </summary>
+    /// <param name="cardId"></param>
+    /// <param name="walletId"></param>
+    /// <returns></returns>
+    public async Task<ResultValue> UpdatePayment(Guid walletId, Guid cardId)
+    {
+        try
+        {
+            if (cardId == Guid.Empty || walletId == Guid.Empty)
+                return ErrorResponse(Message.INVALID_OBJECT.ToString());
+
+            using var repository = new CardRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+
+            var model = await repository.GetById(cardId, walletId);
+            if (model == null)
+                return ErrorResponse(CardNotFound);
+
+            model.UpdatePayment();
+
+            await repository.UpdatePayment(walletId, model);
+
+            return SuccessResponse(Card, Message.SUCCESSFULLY_UPDATED.ToString());
         }
         catch (Exception ex)
         {
@@ -209,7 +216,7 @@ public class CardService : BaseService
 
             await repository.UpdateActive(walletId, cardId);
 
-            return SuccessResponse("CARD", Message.SUCCESSFULLY_UPDATED.ToString());
+            return SuccessResponse(Card, Message.SUCCESSFULLY_UPDATED.ToString());
         }
         catch (Exception ex)
         {
@@ -234,7 +241,7 @@ public class CardService : BaseService
 
             await repository.UpdateInactive(walletId, cardId);
 
-            return SuccessResponse("CARD", Message.SUCCESSFULLY_UPDATED.ToString());
+            return SuccessResponse(Card, Message.SUCCESSFULLY_UPDATED.ToString());
         }
         catch (Exception ex)
         {
@@ -262,7 +269,7 @@ public class CardService : BaseService
 
             await repository.DeleteOneAsync(filter);
 
-            return SuccessResponse("CARD", Message.SUCCESSFULLY_DELETED.ToString());
+            return SuccessResponse(Card, Message.SUCCESSFULLY_DELETED.ToString());
         }
         catch (Exception ex)
         {

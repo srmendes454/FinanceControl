@@ -54,15 +54,13 @@ public class CardRepository : BaseRepository<CardModel>
             {
                 CardId = c.CardId,
                 Name = c.Name,
-                Number = c.Number,
                 Payment = c.Payment,
                 Status = c.Status,
-                PriceTotal = c.PriceTotal,
                 DateExpiration = c.DateExpiration,
+                ClosingDay = c.ClosingDay,
                 Color = c.Color,
                 Active = c.Active,
-                CardType = c.CardType,
-                AvailableLimit = c.AvailableLimit
+                Type = c.Type
             })
             .FirstOrDefaultAsync();
 
@@ -104,15 +102,11 @@ public class CardRepository : BaseRepository<CardModel>
             {
                 CardId = c.CardId,
                 Name = c.Name,
-                Number = c.Number,
                 Payment = c.Payment,
                 Status = c.Status,
-                PriceTotal = c.PriceTotal,
                 DateExpiration = c.DateExpiration,
                 Color = c.Color,
-                Active = c.Active,
-                CardType = c.CardType,
-                AvailableLimit = c.AvailableLimit
+                Active = c.Active
             })
             .ToListAsync();
 
@@ -141,11 +135,29 @@ public class CardRepository : BaseRepository<CardModel>
 
         var update = Builders<CardModel>.Update
             .Set(rec => rec.Name, model.Name)
-            .Set(rec => rec.Number, model.Number)
             .Set(rec => rec.Color, model.Color)
             .Set(rec => rec.DateExpiration, model.DateExpiration)
-            .Set(rec => rec.AvailableLimit, model.AvailableLimit)
-            .Set(rec => rec.CardType, model.CardType)
+            .Set(p => p.UpdateDate, DateTime.UtcNow);
+
+        await UpdateOneAsync(update, filter);
+    }
+
+    /// <summary>
+    /// Atualiza os dados de um Cartão
+    /// </summary>
+    /// <param name="walletId"></param>
+    /// <param name="model"></param>
+    /// <returns></returns>
+    public async Task UpdatePayment(Guid walletId, CardModel model)
+    {
+        var filter = Builders<CardModel>.Filter
+            .Where(x => x.Wallet.WalletId.Equals(walletId)
+                        && x.CardId.Equals(model.CardId)
+                        && x.Active.Equals(true));
+
+        var update = Builders<CardModel>.Update
+            .Set(rec => rec.Payment, model.Payment)
+            .Set(rec => rec.Status, model.Status)
             .Set(p => p.UpdateDate, DateTime.UtcNow);
 
         await UpdateOneAsync(update, filter);

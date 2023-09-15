@@ -14,9 +14,16 @@ namespace FinanceControl.Application.Services.Transactions.Model
     public class TransactionsModel : EntityBase
     {
         #region [ Constructor ]
-        public TransactionsModel()
+
+        public TransactionsModel() { }
+        public TransactionsModel(string name, DateTime datePurchase, TransactionsCashFlow cashFlow, TransactionsType type, RepetitionModel repetition)
         {
             TransactionId = Guid.NewGuid();
+            Name = name;
+            DatePurchase = datePurchase;
+            CashFlow = cashFlow;
+            Type = type;
+            Repetition = new RepetitionModel(repetition.NumberInstallments, repetition.CurrentInstallment, repetition.ValueInstallment);
         }
         #endregion
 
@@ -66,9 +73,12 @@ namespace FinanceControl.Application.Services.Transactions.Model
     public class RepetitionModel
     {
         #region [ Constructor ]
-        public RepetitionModel()
+        public RepetitionModel(int numberInstallments, int currentInstallment, double valueInstallment)
         {
             RepetitionId = Guid.NewGuid();
+            NumberInstallments = numberInstallments;
+            CurrentInstallment = currentInstallment;
+            ValueInstallment = valueInstallment;
         }
         #endregion
 
@@ -81,7 +91,7 @@ namespace FinanceControl.Application.Services.Transactions.Model
 
         [DataMember]
         [BsonIgnoreIfNull]
-        public int QuantityInstallment { get; set; }
+        public int NumberInstallments { get; set; }
 
         [DataMember]
         [BsonIgnoreIfNull]
@@ -96,8 +106,10 @@ namespace FinanceControl.Application.Services.Transactions.Model
     public class PaymentDetailsModel
     {
         #region [ Constructor ]
-        public PaymentDetailsModel()
+        public PaymentDetailsModel(Guid id, string name)
         {
+            Id = id;
+            Name = name;
         }
         #endregion
 
@@ -110,10 +122,6 @@ namespace FinanceControl.Application.Services.Transactions.Model
         [DataMember]
         [BsonIgnoreIfNull]
         public string Name { get; set; }
-
-        [DataMember]
-        [BsonIgnoreIfNull]
-        public string Color { get; set; }
         #endregion
     }
 
@@ -121,8 +129,11 @@ namespace FinanceControl.Application.Services.Transactions.Model
     {
         #region [ Constructor ]
 
-        public AssignedModel()
+        public AssignedModel(Guid userId, string name, string email)
         {
+            AssignedId = userId;
+            Name = name;
+            Email = email;
         }
 
         #endregion
@@ -137,6 +148,10 @@ namespace FinanceControl.Application.Services.Transactions.Model
         [DataMember]
         [BsonIgnoreIfNull]
         public string Name { get; set; }
+
+        [DataMember]
+        [BsonIgnoreIfNull]
+        public string Email { get; set; }
 
         #endregion
     }

@@ -6,7 +6,7 @@ namespace FinanceControl.Application.Services.Transactions.DTO_s.Request
     {
         public Guid WalletId { get; set; }
         public Guid Id { get; set; }
-        public Guid AssignedId { get; set; }
+        public string AssignedEmail { get; set; }
         public string Name { get; set; }
         public string Type { get; set; }
         public string CashFlow { get; set; }

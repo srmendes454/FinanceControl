@@ -4,12 +4,12 @@ namespace FinanceControl.Application.Services.Cards.Model.Enum;
 
 public enum CardType
 {
-    [Description("DEBIT")]
+    [Description("Débito")]
     DEBIT,
 
-    [Description("CREDIT")]
+    [Description("Crédito")]
     CREDIT,
 
-    [Description("DEBIT_CREDIT")]
+    [Description("Débito/Crédito")]
     DEBIT_CREDIT,
 }

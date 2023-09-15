@@ -15,27 +15,40 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using FinanceControl.Application.Extensions.Enum;
+using FinanceControl.Application.Services.Transactions.Model.Enum;
+using FinanceControl.Application.Extensions.Utils.Email;
+using FinanceControl.Application.Services.Cards.Model;
+using FinanceControl.Extensions.BaseRepository;
 
 namespace FinanceControl.Application.Services.Transactions.Service
 {
     public class TransactionsService : BaseService
     {
+        #region [ Fields ]
+
+        private readonly IEmail _email;
+
+        #endregion
+
         #region [ Constructor ]
 
         public TransactionsService(IAppSettings appSettings, ILogger logger,
-            Guid currentUserId) : base(logger: logger, appSettings: appSettings,
+            Guid currentUserId, IEmail email) : base(logger: logger, appSettings: appSettings,
             currentUserId: currentUserId)
         {
-
+            _email = email;
         }
 
         #endregion
 
         #region [ Messages ]
 
-        private const string CardNotFound = "CARD_NOT_FOUND";
-        private const string TypeCannotBeNull = "TYPE_CANNOT_BE_NULL";
-        private const string TransactionNotFound = "TRANSACTION_NOT_FOUND";
+        private const string CardNotFound = "Cartão não encontrado";
+        private const string UserNotFound = "Usuário não encontrado";
+        private const string TypeCannotBeNull = "Tipo não pode ser vazio";
+        private const string TransactionNotFound = "Transação não encontrada";
+        private const string Transaction = "Transação";
+        private const string SubjectEmail = "Controle Financeiro | Você foi marcado em uma transação";
         #endregion
 
         #region [ Public Methods ]
@@ -61,46 +74,50 @@ namespace FinanceControl.Application.Services.Transactions.Service
 
                 using var useRepository = new UserRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
                 var user = await useRepository.GetById(userId);
-
-                var familyMember = new FamilyMemberModel();
-                if (request.AssignedId != Guid.Empty)
-                    familyMember = await useRepository.GetFamilyMemberByUserId(userId, request.AssignedId);
+                if (user == null)
+                    return ErrorResponse(UserNotFound);
 
                 using var repository = new TransactionsRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
-                var model = _mapper.Map<TransactionsModel>(request);
-                switch (request.Type)
+                var model = new TransactionsModel(
+                    request.Name,
+                    request.DatePurchase,
+                    Enum.Parse<TransactionsCashFlow>(request.CashFlow),
+                    Enum.Parse<TransactionsType>(request.Type),
+                    new RepetitionModel(request.Repetition.QuantityInstallment, request.Repetition.CurrentInstallment, request.Repetition.ValueInstallment)
+                );
+
+                switch (model.Type)
                 {
-                    case "CREDIT_CARD":
+                    case TransactionsType.CREDIT_CARD:
                         {
                             using var cardRepository = new CardRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
                             var card = await cardRepository.GetById(request.Id, request.WalletId);
                             if (card == null)
                                 return ErrorResponse(CardNotFound);
 
-                            if (familyMember != null)
-                                model.Assigned = new AssignedModel
+                            if (string.IsNullOrEmpty(request.AssignedEmail))
+                                model.Assigned = new AssignedModel(userId, "@Eu", user.Email);
+                            else
+                            {
+                                var userAssigned = await useRepository.GetByEmail(request.AssignedEmail);
+                                if (userAssigned != null)
+                                    model.Assigned = new AssignedModel(userAssigned.UserId, userAssigned.Name, userAssigned.Email);
+                                else
                                 {
-                                    AssignedId = familyMember?.FamilyId == Guid.Empty ? user.UserId : familyMember.FamilyId,
-                                    Name = familyMember?.Name ?? user.Name
-                                };
-
-                            model.PaymentDetails = new PaymentDetailsModel
-                            {
-                                Id = card.CardId,
-                                Name = card.Name,
-                                Color = card.Color
-                            };
-
-                            for (int i = 0; i < request.Repetition.QuantityInstallment; i++)
-                            {
-                                model.Repetition.CurrentInstallment = request.Repetition.CurrentInstallment++;
-                                await repository.InsertOneAsync(model);
+                                    var template = _email.TemplateTransactionNotification(user.Name, model.Name, model.Repetition.ValueInstallment, card.Name, card.Type.GetEnumDescription());
+                                    var emailSend = _email.Send(request.AssignedEmail, SubjectEmail, template);
+                                    if (!emailSend)
+                                        return ErrorResponse(Message.SEND_EMAIL_FAIL.GetEnumDescription());
+                                }
                             }
+
+                            model.PaymentDetails = new PaymentDetailsModel(card.CardId, card.Name);
+                            AddRepetition(request, repository, card, model);
                         }
                         break;
                 }
 
-                return SuccessResponse("TRANSACTION", Message.SUCCESSFULLY_ADDED.ToString());
+                return SuccessResponse(Transaction, Message.SUCCESSFULLY_ADDED.GetEnumDescription());
             }
             catch (Exception ex)
             {
@@ -147,7 +164,31 @@ namespace FinanceControl.Application.Services.Transactions.Service
 
         #region [ Private Methods ]
 
-
+        private static async void AddRepetition(TransactionsInsertRequest request, TransactionsRepository repository, CardModel card, TransactionsModel model)
+        {
+            var closingDay = new DateTime(DateTime.Now.Year, DateTime.Now.Month, card.ClosingDay);
+            var dateExpiration = card.DateExpiration > DateTime.Now.Day
+                ? new DateTime(DateTime.Now.Year, DateTime.Now.Month, card.DateExpiration)
+                : new DateTime(DateTime.Now.Year, DateTime.Now.AddMonths(1).Month, card.DateExpiration);
+            if (request.DatePurchase <= closingDay)
+            {
+                for (int i = 0; i < request.Repetition.QuantityInstallment; i++)
+                {
+                    model.Repetition.CurrentInstallment = request.Repetition.CurrentInstallment++;
+                    model.ExpirationDate = dateExpiration.AddMonths(i);
+                    await repository.InsertOneAsync(model);
+                }
+            }
+            else
+            {
+                for (int i = 1; i <= request.Repetition.QuantityInstallment; i++)
+                {
+                    model.Repetition.CurrentInstallment = request.Repetition.CurrentInstallment++;
+                    model.ExpirationDate = dateExpiration.AddMonths(i);
+                    await repository.InsertOneAsync(model);
+                }
+            }
+        }
 
         #endregion
     }

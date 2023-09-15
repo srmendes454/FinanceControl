@@ -81,6 +81,20 @@ public class CardController : BaseController
     }
 
     /// <summary>
+    /// Atualiza os dados de pagamento de um cartão
+    /// </summary>
+    /// <param name="cardId"></param>
+    /// <param name="walletId"></param>
+    /// <returns></returns>
+    [HttpPut("/v1/card/{cardId}/wallet/{walletId}/payment")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdatePayment([FromRoute] Guid cardId, [FromRoute] Guid walletId)
+    {
+        using var service = new CardService(_appSettings, _logger, GetCurrentUserId());
+        return Ok(await service.UpdatePayment(walletId, cardId));
+    }
+
+    /// <summary>
     /// Ativa um Cartão
     /// </summary>
     /// <param name="walletId"></param>

@@ -14,10 +14,22 @@ namespace FinanceControl.Application.Services.Cards.Model;
 public class CardModel : EntityBase
 {
     #region [ Constructor ]
-    public CardModel()
+    public CardModel(Guid userId, string name, string color, int dateExpiration, int closingDay, Status status, CardType type, CardWalletModel wallet)
     {
         CardId = Guid.NewGuid();
+        Name = name;
+        Color = color;
+        DateExpiration = dateExpiration;
+        ClosingDay = closingDay;
+        Payment = false;
+        Status = status;
+        Type = type;
+        Wallet = new CardWalletModel(wallet.WalletId, wallet.Name);
+        CreatedBy = userId;
+        CreationDate = DateTime.Now;
+        Active = true;
     }
+    public CardModel(){}
     #endregion
 
     #region [ Properties ]
@@ -33,10 +45,6 @@ public class CardModel : EntityBase
 
     [DataMember]
     [BsonIgnoreIfNull]
-    public string Number { get; set; }
-
-    [DataMember]
-    [BsonIgnoreIfNull]
     public string Color { get; set; }
 
     [DataMember]
@@ -45,15 +53,11 @@ public class CardModel : EntityBase
 
     [DataMember]
     [BsonIgnoreIfNull]
+    public int ClosingDay { get; set; }
+
+    [DataMember]
+    [BsonIgnoreIfNull]
     public bool Payment { get; set; }
-
-    [DataMember]
-    [BsonIgnoreIfNull]
-    public double PriceTotal { get; set; }
-
-    [DataMember]
-    [BsonIgnoreIfNull]
-    public double AvailableLimit { get; set; }
 
     [DataMember]
     [BsonIgnoreIfNull]
@@ -63,18 +67,40 @@ public class CardModel : EntityBase
     [DataMember]
     [BsonIgnoreIfNull]
     [BsonRepresentation(BsonType.String)]
-    public CardType CardType { get; set; }
+    public CardType Type { get; set; }
 
     [DataMember]
     [BsonIgnoreIfNull]
     public CardWalletModel Wallet { get; set; }
     #endregion
+
+    #region [ Public Methods ]
+
+    public void Update(string name, string color, int dateExpiration, CardType type)
+    {
+        Name = name;
+        Color = color;
+        DateExpiration = dateExpiration;
+        Type = type;
+        UpdateDate = DateTime.UtcNow;
+    }
+
+    public void UpdatePayment ()
+    {
+        Payment = true;
+        Status = Status.PAID_OUT;
+        UpdateDate = DateTime.UtcNow;
+    }
+
+    #endregion
 }
 public class CardWalletModel
 {
     #region [ Constructor ]
-    public CardWalletModel()
+    public CardWalletModel(Guid walletId, string name)
     {
+        WalletId = walletId;
+        Name = name;
     }
     #endregion
 

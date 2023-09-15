@@ -6,5 +6,7 @@ public interface IEmail
 
     string TemplateResetPassword(string name, string subject, string message, string code);
 
-    string TemplateWelcome(string name, string subject, string message);    
+    string TemplateWelcome(string name, string subject, string message);
+
+    string TemplateTransactionNotification(string name, string nameTransaction, double valueTransaction, string namePayment, string typePayment);    
 }
