@@ -371,15 +371,35 @@ public class UserService : BaseService
             if (user == null)
                 return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
 
-            var familyMember = new FamilyMemberModel
+            user.FamilyMembers ??= new List<FamilyMemberModel>();
+            if (request.UserId != Guid.Empty)
             {
-                Name = request.Name,
-                Kinship = request.Kinship,
-                Email = request.Email,
-                Active = true,
-                CreationDate = DateTime.UtcNow
-            };
-            user.FamilyMembers.Add(familyMember);
+                var userFamily = await repository.GetById(request.UserId);
+                if (userFamily != null)
+                {
+                    user.FamilyMembers.Add(new FamilyMemberModel
+                    {
+                        UserId = userFamily.UserId,
+                        Name = userFamily.Name,
+                        Kinship = request.Kinship,
+                        Email = userFamily.Email,
+                        Active = true,
+                        CreationDate = DateTime.UtcNow
+                    });
+                }
+            }
+            else
+            {
+                user.FamilyMembers.Add(new FamilyMemberModel
+                {
+                    UserId = Guid.Empty,
+                    Name = request.Name,
+                    Kinship = request.Kinship,
+                    Email = request.Email,
+                    Active = true,
+                    CreationDate = DateTime.UtcNow
+                });
+            }
 
             await repository.UpdateFamilyMembers(userId, user);
 
@@ -411,14 +431,22 @@ public class UserService : BaseService
             if (user == null)
                 return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
 
-            var familyMember = user.FamilyMembers?.FirstOrDefault(f => f.FamilyId.Equals(familyId));
+            var familyMember = user.FamilyMembers.FirstOrDefault(fm => fm.FamilyId.Equals(familyId));
             if (familyMember == null)
                 return ErrorResponse(FamilyMemberNotFound);
 
-            familyMember.Name = request.Name;
-            familyMember.Email = request.Email;
-            familyMember.Kinship = request.Kinship;
-            familyMember.UpdateDate = DateTime.UtcNow;
+            if (familyMember.UserId != Guid.Empty)
+            {
+                familyMember.Kinship = request.Kinship;
+                familyMember.UpdateDate = DateTime.UtcNow;
+            }
+            else
+            {
+                familyMember.Name = request.Name;
+                familyMember.Email = request.Email;
+                familyMember.Kinship = request.Kinship;
+                familyMember.UpdateDate = DateTime.UtcNow;
+            }
 
             await repository.UpdateFamilyMembers(userId, user);
 

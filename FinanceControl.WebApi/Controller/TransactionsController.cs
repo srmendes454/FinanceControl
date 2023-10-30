@@ -40,5 +40,34 @@ public class TransactionsController : BaseController
         return Ok(await service.Insert(request));
     }
 
+    #region [ Duties ]
+
+    /// <summary>
+    /// Obtem todas as Transações que me foi atribuido
+    /// </summary>
+    /// <param name="request"></param>
+    /// <returns></returns>
+    [HttpGet("/v1/transaction/duties")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListAssignedTransactions(string search, int take = 20, int skip = 1)
+    {
+        using var service = new TransactionsService(_appSettings, _logger, _request.UserId, _email);
+        return Ok(await service.ListAssignedTransactions(search, take, skip));
+    }
+
+    /// <summary>
+    /// Serviço para Avaliar as atribuições em transações
+    /// </summary>
+    /// <param name="request"></param>
+    /// <returns></returns>
+    [HttpPut("/v1/transaction/evaluate-assigned")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> EvaluateAssignedTransaction([FromBody] TransactionsEvaluateAssignedRequest request)
+    {
+        using var service = new TransactionsService(_appSettings, _logger, _request.UserId, _email);
+        return Ok(await service.EvaluateAssignedTransaction(request));
+    }
+
+    #endregion
     #endregion
 }

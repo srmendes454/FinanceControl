@@ -16,13 +16,16 @@ namespace FinanceControl.Application.Services.Transactions.Model
         #region [ Constructor ]
 
         public TransactionsModel() { }
-        public TransactionsModel(string name, DateTime datePurchase, TransactionsCashFlow cashFlow, TransactionsType type, RepetitionModel repetition)
+        public TransactionsModel(Guid userId, string name, DateTime datePurchase, TransactionsCashFlow cashFlow, TransactionsType type, RepetitionModel repetition)
         {
             TransactionId = Guid.NewGuid();
             Name = name;
             DatePurchase = datePurchase;
             CashFlow = cashFlow;
             Type = type;
+            Active = true;
+            CreationDate = DateTime.Now;
+            CreatedBy = userId;
             Repetition = new RepetitionModel(repetition.NumberInstallments, repetition.CurrentInstallment, repetition.ValueInstallment);
         }
         #endregion

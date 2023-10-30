@@ -33,4 +33,17 @@ namespace FinanceControl.Application.Services.Transactions.DTO_s.Response
         public Guid AssignedId { get; set; }
         public string Name { get; set; }
     }
+
+    public class TransactionsAssignedToMeResponse
+    {
+        public Guid TransactionId { get; set; }
+        public string Marked { get; set; }
+        public string Name { get; set; }
+        public string Type { get; set; }
+        public string CashFlow { get; set; }
+        public DateTime DatePurchase { get; set; }
+        public int QuantityInstallment { get; set; }
+        public int CurrentInstallment { get; set; } = 1;
+        public double ValueInstallment { get; set; }
+    }
 }

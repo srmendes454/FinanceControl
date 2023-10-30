@@ -6,6 +6,7 @@ namespace FinanceControl.Application.Services.Transactions.DTO_s.Request
     {
         public Guid WalletId { get; set; }
         public Guid Id { get; set; }
+        public Guid AssignedId { get; set; }
         public string AssignedEmail { get; set; }
         public string Name { get; set; }
         public string Type { get; set; }
@@ -19,5 +20,13 @@ namespace FinanceControl.Application.Services.Transactions.DTO_s.Request
         public int QuantityInstallment { get; set; }
         public int CurrentInstallment { get; set; } = 1;
         public double ValueInstallment { get; set; }
+    }
+
+    public class TransactionsEvaluateAssignedRequest
+    {
+        public Guid TransactionId { get; set; }
+        public Guid WalletId { get; set; }
+        public Guid CardId { get; set; }
+        public bool Approved { get; set; }
     }
 }

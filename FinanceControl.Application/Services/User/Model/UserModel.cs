@@ -110,6 +110,12 @@ public class FamilyMemberModel : EntityBase
 
     [DataMember]
     [BsonIgnoreIfNull]
+    [BsonElement("UserId")]
+    [BsonRepresentation(BsonType.String)]
+    public Guid UserId { get; set; }
+
+    [DataMember]
+    [BsonIgnoreIfNull]
     public string Name { get; set; }
 
     [DataMember]

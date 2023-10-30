@@ -29,5 +29,8 @@ public enum Message
     SEND_EMAIL_SUCCESS,
 
     [Description("Código Inválido")]
-    CODE_INVALID
+    CODE_INVALID,
+
+    [Description("avaliada com sucesso")]
+    EVALUATE_TRANSACTION
 }

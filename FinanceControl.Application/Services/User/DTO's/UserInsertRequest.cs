@@ -1,4 +1,6 @@
-﻿namespace FinanceControl.Application.Services.User.DTO_s;
+﻿using System;
+
+namespace FinanceControl.Application.Services.User.DTO_s;
 
 public class UserInsertRequest
 {
@@ -27,6 +29,7 @@ public class UserPasswordRequest
 }
 public class FamilyMemberRequest
 {
+    public Guid UserId { get; set; }
     public string Name { get; set; }
     public string Kinship { get; set; }
     public string Email { get; set; }

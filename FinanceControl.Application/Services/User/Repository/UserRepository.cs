@@ -79,6 +79,25 @@ public class UserRepository : BaseRepository<UserModel>
     }
 
     /// <summary>
+    /// Retorna o nome do Usuário
+    /// </summary>
+    /// <param name="userId"></param>
+    /// <returns></returns>
+    public async Task<string> GetNameById(Guid userId)
+    {
+        var filter = Builders<UserModel>.Filter
+            .Where(p => p.UserId.Equals(userId));
+
+        var record = await GetUserCollection()
+            .Aggregate()
+            .Match(filter)
+            .Project(u => new UserModel { Name = u.Name })
+            .FirstOrDefaultAsync();
+
+        return record.Name;
+    }
+
+    /// <summary>
     /// Obtem um User por Id
     /// </summary>
     /// <param name="userId"></param>
@@ -106,6 +125,35 @@ public class UserRepository : BaseRepository<UserModel>
                 Thumbnail = u.Thumbnail,
                 Password = u.Password,
                 FamilyMembers = u.FamilyMembers
+            })
+            .FirstOrDefaultAsync();
+
+        return result;
+    }
+
+    /// <summary>
+    /// Obtem um User por Id
+    /// </summary>
+    /// <param name="userId"></param>
+    /// <returns></returns>
+    public async Task<UserModel> GetDataPartialById(Guid userId)
+    {
+        var filter = Builders<UserModel>.Filter
+            .Where(p => p.UserId.Equals(userId)
+                        && p.Active.Equals(true));
+
+        var sort = Builders<UserModel>.Sort
+            .Ascending(x => x.CreationDate);
+
+        var result = await GetUserCollection()
+            .Aggregate()
+            .Match(filter)
+            .Sort(sort)
+            .Project(u => new UserModel
+            {
+                UserId = u.UserId,
+                Name = u.Name,
+                Email = u.Email
             })
             .FirstOrDefaultAsync();
 
