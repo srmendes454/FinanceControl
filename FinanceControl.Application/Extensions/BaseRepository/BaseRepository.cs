@@ -111,20 +111,5 @@ public class BaseRepository<TCollection> : IBaseRepository<TCollection>, IDispos
             await _mongoSession.AbortTransactionAsync();
         }
     }
-
-    public async Task<IMongoCollection<TCollection>> StartupCollection(Guid accountId)
-    {
-        return GetMongoCollection();
-    }
-
-    public async Task<IMongoCollection<TCollection>> StartupCollection(Guid accountId, string _environmentName)
-    {
-        return GetMongoCollection();
-    }
-
-    public async Task<IMongoCollection<TCollection>> StartupCollection()
-    {
-        return GetMongoCollection();
-    }
     #endregion
 }

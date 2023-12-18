@@ -46,27 +46,24 @@ public class CardService : BaseService
     {
         try
         {
-            if (request == null)
-                return ErrorResponse(Message.INVALID_OBJECT.ToString());
-
             var userId = GetCurrentUserId();
-            if (request.WalletId == Guid.Empty && userId == Guid.Empty)
-                return ErrorResponse(Message.INVALID_OBJECT.ToString());
+            if (request.WalletId == Guid.Empty || userId == Guid.Empty || request == null)
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
             using var walletRepository = new WalletRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
             var wallet = await walletRepository.GetById(request.WalletId, userId);
             if (wallet == null)
                 return ErrorResponse(WalletNotFound);
 
-            var date = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, request.DateExpiration);
+            var date = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, request.ExpirationDay);
             var closingDay = date.AddDays(-6);
-            var model = new CardModel(userId, request.Name, request.Color, request.DateExpiration, closingDay.Day, Status.CREATED, Enum.Parse<CardType>(request.Type), new CardWalletModel(wallet.WalletId, wallet.Name));
+            var model = new CardModel(userId, request.Name, request.Color, request.ExpirationDay, closingDay.Day, Enum.Parse<CardType>(request.Type), new CardWalletModel(wallet.WalletId, wallet.Name));
 
-            using var repository = new CardRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+            using var repository = new CardRepository(_appSettings.GetMongoDb(), _logger);
 
             await repository.InsertOneAsync(model);
 
-            return SuccessResponse(Card, Message.SUCCESSFULLY_ADDED.ToString());
+            return SuccessResponse(Card, Message.SUCCESSFULLY_ADDED.GetEnumDescription());
         }
         catch (Exception ex)
         {
@@ -85,10 +82,10 @@ public class CardService : BaseService
         try
         {
             var userId = GetCurrentUserId();
-            if (cardId == Guid.Empty && userId == Guid.Empty)
-                return ErrorResponse(Message.INVALID_OBJECT.ToString());
+            if (cardId == Guid.Empty || userId == Guid.Empty || walletId == Guid.Empty)
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-            using var repository = new CardRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+            using var repository = new CardRepository(_appSettings.GetMongoDb(), _logger);
 
             var record = await repository.GetById(cardId, walletId);
             if (record == null)
@@ -116,7 +113,10 @@ public class CardService : BaseService
     {
         try
         {
-            using var repository = new CardRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+            if (walletId == Guid.Empty)
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
+
+            using var repository = new CardRepository(_appSettings.GetMongoDb(), _logger);
 
             var list = await repository.GetAll(walletId, search, take, skip);
             if (list == null)
@@ -143,55 +143,23 @@ public class CardService : BaseService
     /// <param name="cardId"></param>
     /// <param name="request"></param>
     /// <returns></returns>
-    public async Task<ResultValue> Update(Guid cardId, CardInsertRequest request)
+    public async Task<ResultValue> Update(Guid cardId, CardUpdateRequest request)
     {
         try
         {
             if (request == null || cardId == Guid.Empty || request.WalletId == Guid.Empty)
-                return ErrorResponse(Message.INVALID_OBJECT.ToString());
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-            using var repository = new CardRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+            using var repository = new CardRepository(_appSettings.GetMongoDb(), _logger);
 
             var model = await repository.GetById(cardId, request.WalletId);
             if (model == null)
                 return ErrorResponse(CardNotFound);
 
-            model.Update(request.Name, request.Color, request.DateExpiration, Enum.Parse<CardType>(request.Type));
-
+            model.Update(request.Name, request.Color, request.ExpirationDay, request.ClosingDay, Enum.Parse<CardType>(request.Type));
             await repository.Update(request.WalletId, model);
 
-            return SuccessResponse(Card, Message.SUCCESSFULLY_UPDATED.ToString());
-        }
-        catch (Exception ex)
-        {
-            return ErrorResponse(ex);
-        }
-    }
-
-    /// <summary>
-    /// Serviço para atualizar o pagamento de um Cartão
-    /// </summary>
-    /// <param name="cardId"></param>
-    /// <param name="walletId"></param>
-    /// <returns></returns>
-    public async Task<ResultValue> UpdatePayment(Guid walletId, Guid cardId)
-    {
-        try
-        {
-            if (cardId == Guid.Empty || walletId == Guid.Empty)
-                return ErrorResponse(Message.INVALID_OBJECT.ToString());
-
-            using var repository = new CardRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
-
-            var model = await repository.GetById(cardId, walletId);
-            if (model == null)
-                return ErrorResponse(CardNotFound);
-
-            model.UpdatePayment();
-
-            await repository.UpdatePayment(walletId, model);
-
-            return SuccessResponse(Card, Message.SUCCESSFULLY_UPDATED.ToString());
+            return SuccessResponse(Card, Message.SUCCESSFULLY_UPDATED.GetEnumDescription());
         }
         catch (Exception ex)
         {
@@ -209,14 +177,14 @@ public class CardService : BaseService
     {
         try
         {
-            if (cardId == Guid.Empty && walletId == Guid.Empty)
-                return ErrorResponse(Message.INVALID_OBJECT.ToString());
+            if (cardId == Guid.Empty || walletId == Guid.Empty)
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-            using var repository = new CardRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+            using var repository = new CardRepository(_appSettings.GetMongoDb(), _logger);
 
             await repository.UpdateActive(walletId, cardId);
 
-            return SuccessResponse(Card, Message.SUCCESSFULLY_UPDATED.ToString());
+            return SuccessResponse(Card, Message.SUCCESSFULLY_UPDATED.GetEnumDescription());
         }
         catch (Exception ex)
         {
@@ -234,14 +202,14 @@ public class CardService : BaseService
     {
         try
         {
-            if (cardId == Guid.Empty && walletId == Guid.Empty)
-                return ErrorResponse(Message.INVALID_OBJECT.ToString());
+            if (cardId == Guid.Empty || walletId == Guid.Empty)
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-            using var repository = new CardRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+            using var repository = new CardRepository(_appSettings.GetMongoDb(), _logger);
 
             await repository.UpdateInactive(walletId, cardId);
 
-            return SuccessResponse(Card, Message.SUCCESSFULLY_UPDATED.ToString());
+            return SuccessResponse(Card, Message.SUCCESSFULLY_UPDATED.GetEnumDescription());
         }
         catch (Exception ex)
         {
@@ -259,17 +227,13 @@ public class CardService : BaseService
     {
         try
         {
-            if (cardId == Guid.Empty && walletId == Guid.Empty)
-                return ErrorResponse(Message.INVALID_OBJECT.ToString());
+            if (cardId == Guid.Empty || walletId == Guid.Empty)
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-            using var repository = new CardRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
-            var filter = Builders<CardModel>.Filter
-                .Where(x => x.CardId.Equals(cardId)
-                            && x.Wallet.WalletId.Equals(walletId));
+            using var repository = new CardRepository(_appSettings.GetMongoDb(), _logger);
+            await repository.Delete(walletId, cardId);
 
-            await repository.DeleteOneAsync(filter);
-
-            return SuccessResponse(Card, Message.SUCCESSFULLY_DELETED.ToString());
+            return SuccessResponse(Card, Message.SUCCESSFULLY_DELETED.GetEnumDescription());
         }
         catch (Exception ex)
         {

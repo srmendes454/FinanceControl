@@ -15,12 +15,13 @@ public class WalletModel : EntityBase
     #region [ Constructor ]
     public WalletModel(){}
 
-    public WalletModel(string name, string color, double income, Guid userId, string userName, List<OptimizeIncomeModel> optimizeIncome)
+    public WalletModel(string name, string color, double income, int receiptDay, Guid userId, string userName, List<OptimizeIncomeModel> optimizeIncome)
     {
         WalletId = Guid.NewGuid();
         Name = name;
         Color = color;
         Income = income;
+        ReceiptDay = receiptDay;
         Active = true;
         CreationDate = DateTime.UtcNow;
         CreatedBy = userId;
@@ -51,6 +52,10 @@ public class WalletModel : EntityBase
 
     [DataMember]
     [BsonIgnoreIfNull]
+    public int ReceiptDay { get; set; }
+
+    [DataMember]
+    [BsonIgnoreIfNull]
     public WalletUserModel User { get; set; }
 
     [DataMember]
@@ -60,11 +65,12 @@ public class WalletModel : EntityBase
 
     #region [ Public Methods ]
 
-    public void Update(string name, string color, double income)
+    public void Update(string name, string color, double income, int receiptDay)
     {
         Name = name;
         Color = color;
         Income = income;
+        ReceiptDay = receiptDay;
         UpdateDate = DateTime.UtcNow;
     }
 

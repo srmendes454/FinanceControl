@@ -41,7 +41,7 @@ namespace FinanceControl.Application.Services.Transactions.DTO_s.Response
         public string Name { get; set; }
         public string Type { get; set; }
         public string CashFlow { get; set; }
-        public DateTime DatePurchase { get; set; }
+        public string DatePurchase { get; set; }
         public int QuantityInstallment { get; set; }
         public int CurrentInstallment { get; set; } = 1;
         public double ValueInstallment { get; set; }

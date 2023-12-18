@@ -60,7 +60,7 @@ public class WalletService : BaseService
                 return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
 
             var optimizeIncome = GenerateMethod20_30_50();
-            var model = new WalletModel(request.Name, request.Color, request.Income, userId, user.Name, optimizeIncome);
+            var model = new WalletModel(request.Name, request.Color, request.Income, request.ReceiptDay, userId, user.Name, optimizeIncome);
 
             using var repository = new WalletRepository(_appSettings.GetMongoDb(), _logger);
 
@@ -87,7 +87,7 @@ public class WalletService : BaseService
             if (walletId == Guid.Empty && userId == Guid.Empty)
                 return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-            using var repository = new WalletRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+            using var repository = new WalletRepository(_appSettings.GetMongoDb(), _logger);
 
             var record = await repository.GetById(walletId, userId);
             if (record == null)
@@ -112,7 +112,7 @@ public class WalletService : BaseService
         try
         {
             var userId = GetCurrentUserId();
-            using var repository = new WalletRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+            using var repository = new WalletRepository(_appSettings.GetMongoDb(), _logger);
 
             var list = await repository.GetAllByUser(userId);
             if (list == null)
@@ -142,13 +142,13 @@ public class WalletService : BaseService
             if (walletId == Guid.Empty || userId == Guid.Empty || request.Equals(null))
                 return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-            using var repository = new WalletRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+            using var repository = new WalletRepository(_appSettings.GetMongoDb(), _logger);
 
             var model = await repository.GetById(walletId, userId);
             if (model == null)
                 return ErrorResponse(WalletNotFound);
 
-            model.Update(request.Name, request.Color, request.Income);
+            model.Update(request.Name, request.Color, request.Income, request.ReceiptDay);
 
             await repository.Update(walletId, model);
 
@@ -173,7 +173,7 @@ public class WalletService : BaseService
             if (walletId == Guid.Empty && userId == Guid.Empty)
                 return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-            using var repository = new WalletRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+            using var repository = new WalletRepository(_appSettings.GetMongoDb(), _logger);
 
             await repository.Delete(walletId, userId);
 
@@ -198,7 +198,7 @@ public class WalletService : BaseService
             if (walletId == Guid.Empty && userId == Guid.Empty)
                 return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-            using var repository = new WalletRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+            using var repository = new WalletRepository(_appSettings.GetMongoDb(), _logger);
 
             await repository.UpdateActive(walletId, userId);
 
@@ -223,7 +223,7 @@ public class WalletService : BaseService
             if (walletId == Guid.Empty && userId == Guid.Empty)
                 return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-            using var repository = new WalletRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+            using var repository = new WalletRepository(_appSettings.GetMongoDb(), _logger);
 
             await repository.UpdateInactive(walletId, userId);
 
@@ -246,7 +246,10 @@ public class WalletService : BaseService
     {
         try
         {
-            using var repository = new WalletRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+            if (walletId == Guid.Empty)
+                return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
+
+            using var repository = new WalletRepository(_appSettings.GetMongoDb(), _logger);
 
             var list = await repository.GetAllByWallet(walletId);
             if (list == null)
@@ -275,7 +278,7 @@ public class WalletService : BaseService
             if (walletId == Guid.Empty && optimizeIncomeId == Guid.Empty)
                 return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-            using var repository = new WalletRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+            using var repository = new WalletRepository(_appSettings.GetMongoDb(), _logger);
 
             var record = await repository.GetOptimizeIncomeById(walletId, optimizeIncomeId);
             if (record == null)
@@ -305,16 +308,15 @@ public class WalletService : BaseService
             if (walletId == Guid.Empty || optimizeIncomeId == Guid.Empty || request.Equals(null))
                 return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-            using var repository = new WalletRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+            using var repository = new WalletRepository(_appSettings.GetMongoDb(), _logger);
 
             var list = await repository.GetAllByWallet(walletId);
             if (list == null)
                 return ErrorResponse(Message.LIST_EMPTY.GetEnumDescription());
 
-            list.ForEach(x =>
+            list.Where(o => o.OptimizeIncomeId.Equals(optimizeIncomeId)).ToList().ForEach(x =>
             {
-                if (x.OptimizeIncomeId == optimizeIncomeId)
-                    x.Update(request.Name, request.Color, request.Percent);
+                x.Update(request.Name, request.Color, request.Percent);
             });
 
             await repository.UpdateOptimizeIncome(walletId, list);
@@ -350,7 +352,7 @@ public class WalletService : BaseService
             if (optimizeIncome == null)
                 return ErrorResponse(OptimizeIncomeNotFound);
 
-            list.Remove(optimizeIncome);
+            list.RemoveAll(x => x.OptimizeIncomeId.Equals(optimizeIncomeId));
             await repository.UpdateOptimizeIncome(walletId, list);
 
             return SuccessResponse(OptimizeIncome, Message.SUCCESSFULLY_DELETED.GetEnumDescription());
@@ -371,9 +373,9 @@ public class WalletService : BaseService
     {
         return new List<OptimizeIncomeModel>
         {
-            new OptimizeIncomeModel("Essencial", "#1875FF", 50),
-            new OptimizeIncomeModel("Lazer", "#04C300", 30),
-            new OptimizeIncomeModel("Investimento", "#F39200", 20)
+            new("Essencial", "#1875FF", 50),
+            new("Lazer", "#04C300", 30),
+            new("Investimento", "#F39200", 20)
         };
     }
 

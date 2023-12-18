@@ -1,4 +1,6 @@
 ﻿using FinanceControl.Application.Extensions.BaseService;
+using FinanceControl.Application.Extensions.Enum;
+using FinanceControl.Application.Extensions.Utils.Cryptography;
 using FinanceControl.Application.Extensions.Utils.Email;
 using FinanceControl.Application.Services.User.DTO_s;
 using FinanceControl.Application.Services.User.Model;
@@ -12,8 +14,6 @@ using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
-using FinanceControl.Application.Extensions.Enum;
-using Microsoft.OpenApi.Extensions;
 using ILogger = Serilog.ILogger;
 
 namespace FinanceControl.Application.Services.User.Service;
@@ -75,7 +75,7 @@ public class UserService : BaseService
             if (request.Password != request.ConfirmPassword)
                 return ErrorResponse(PasswordsNotMatch);
 
-            var model = new UserModel(request.Name, request.Email, request.Password);
+            var model = new UserModel(request.Name, request.Email, request.Password.EncryptPassword());
 
             await repository.InsertOneAsync(model);
 
@@ -115,8 +115,7 @@ public class UserService : BaseService
             if (user == null)
                 return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
 
-            var password = user.Password;
-            if (request.Password != password)
+            if (request.Password.EncryptPassword() != user.Password)
                 return ErrorResponse(PasswordsInvalid);
 
             var token = GenerateToken(user.UserId, user.Email, user.Name);
@@ -178,16 +177,16 @@ public class UserService : BaseService
             if (user == null)
                 return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
 
-            if (user.Password != request.OldPassword)
+            if (user.Password != request.OldPassword.EncryptPassword())
                 return ErrorResponse(PasswordsInvalid);
 
             if (request.NewPassword != request.NewConfirmPassword)
                 return ErrorResponse(PasswordsNotMatch);
 
-            if (request.NewPassword == user.Password)
+            if (request.NewPassword.EncryptPassword() == user.Password)
                 return ErrorResponse(PasswordEqualsOld);
 
-            user.UpdatePassword(request.NewPassword);
+            user.UpdatePassword(request.NewPassword.EncryptPassword());
 
             await repository.UpdatePassword(userId, user);
 
@@ -275,13 +274,13 @@ public class UserService : BaseService
             if (user == null)
                 return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
 
-            if (user.Password == request.NewPassword)
+            if (user.Password == request.NewPassword.EncryptPassword())
                 return ErrorResponse(PasswordEqualsOld);
 
             if (request.NewPassword != request.ConfirmNewPassword)
                 return ErrorResponse(PasswordsNotMatch);
 
-            user.Password = request.NewPassword;
+            user.Password = request.NewPassword.EncryptPassword();
             await repository.UpdatePassword(user.UserId, user);
 
             return SuccessResponse(PasswordResetSuccess, ReturnPageLogin);

@@ -158,7 +158,7 @@ namespace FinanceControl.Application.Services.Transactions.Service
             }
         }
 
-        #region [ Duties ]
+        #region [ Transactions ]
 
         /// <summary>
         /// Obtem todas as Transações que me foi atribuido
@@ -184,7 +184,7 @@ namespace FinanceControl.Application.Services.Transactions.Service
                     Name = t.Name,
                     CashFlow = t.CashFlow.GetEnumDescription(),
                     Type = t.Type.GetEnumDescription(),
-                    DatePurchase = t.DatePurchase,
+                    DatePurchase = $"{t.DatePurchase:dd} {t.DatePurchase:MMMM} {t.DatePurchase:yy}",
                     QuantityInstallment = t.Repetition.NumberInstallments,
                     ValueInstallment = t.Repetition.ValueInstallment
                 });
@@ -267,9 +267,9 @@ namespace FinanceControl.Application.Services.Transactions.Service
         private static async void AddRepetition(DateTime datePurchase, int quantityInstallment, int currentInstallment, TransactionsRepository repository, CardModel card, TransactionsModel model)
         {
             var closingDay = new DateTime(DateTime.Now.Year, DateTime.Now.Month, card.ClosingDay);
-            var dateExpiration = card.DateExpiration > DateTime.Now.Day
-                ? new DateTime(DateTime.Now.Year, DateTime.Now.Month, card.DateExpiration)
-                : new DateTime(DateTime.Now.Year, DateTime.Now.AddMonths(1).Month, card.DateExpiration);
+            var dateExpiration = card.ExpirationDay > DateTime.Now.Day
+                ? new DateTime(DateTime.Now.Year, DateTime.Now.Month, card.ExpirationDay)
+                : new DateTime(DateTime.Now.Year, DateTime.Now.AddMonths(1).Month, card.ExpirationDay);
             if (datePurchase <= closingDay)
             {
                 for (int i = 0; i < quantityInstallment; i++)

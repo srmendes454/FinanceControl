@@ -4,16 +4,19 @@ namespace FinanceControl.Application.Extensions.Enum
 {
     public enum Status
     {
-        [Description("Criado")]
-        CREATED,
+        [Description("Aberta")]
+        OPEN,
+
+        [Description("Fechada")]
+        CLOSED,
 
         [Description("A pagar")]
-        TO_WIN,
+        PAYABLE,
 
-        [Description("Vencido")]
+        [Description("Atrasada")]
         OVERDUE,
 
-        [Description("Pago")]
-        PAID_OUT
+        [Description("Paga")]
+        PAID
     }
 }

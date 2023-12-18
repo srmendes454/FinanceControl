@@ -56,7 +56,8 @@ public class WalletRepository : BaseRepository<WalletModel>
                 WalletId = w.WalletId,
                 Name = w.Name,
                 Color = w.Color,
-                Income = w.Income
+                Income = w.Income,
+                ReceiptDay = w.ReceiptDay
             })
             .FirstOrDefaultAsync();
 
@@ -86,7 +87,8 @@ public class WalletRepository : BaseRepository<WalletModel>
                 WalletId = w.WalletId,
                 Name = w.Name,
                 Color = w.Color,
-                Income = w.Income
+                Income = w.Income,
+                ReceiptDay = w.ReceiptDay
             })
             .ToListAsync();
 
@@ -109,6 +111,7 @@ public class WalletRepository : BaseRepository<WalletModel>
             .Set(rec => rec.Name, model.Name)
             .Set(rec => rec.Color, model.Color)
             .Set(rec => rec.Income, model.Income)
+            .Set(rec => rec.ReceiptDay, model.ReceiptDay)
             .Set(p => p.UpdateDate, model.UpdateDate);
 
         await UpdateOneAsync(update, filter);

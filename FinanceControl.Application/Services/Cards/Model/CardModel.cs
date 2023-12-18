@@ -1,11 +1,10 @@
-﻿using FinanceControl.Application.Services.Cards.Model.Enum;
+﻿using FinanceControl.Application.Extensions.BaseModel;
+using FinanceControl.Application.Services.Cards.Model.Enum;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Runtime.Serialization;
-using FinanceControl.Application.Extensions.BaseModel;
-using FinanceControl.Application.Extensions.Enum;
 
 namespace FinanceControl.Application.Services.Cards.Model;
 
@@ -14,15 +13,13 @@ namespace FinanceControl.Application.Services.Cards.Model;
 public class CardModel : EntityBase
 {
     #region [ Constructor ]
-    public CardModel(Guid userId, string name, string color, int dateExpiration, int closingDay, Status status, CardType type, CardWalletModel wallet)
+    public CardModel(Guid userId, string name, string color, int expirationDay, int closingDay, CardType type, CardWalletModel wallet)
     {
         CardId = Guid.NewGuid();
         Name = name;
         Color = color;
-        DateExpiration = dateExpiration;
+        ExpirationDay = expirationDay;
         ClosingDay = closingDay;
-        Payment = false;
-        Status = status;
         Type = type;
         Wallet = new CardWalletModel(wallet.WalletId, wallet.Name);
         CreatedBy = userId;
@@ -49,20 +46,11 @@ public class CardModel : EntityBase
 
     [DataMember]
     [BsonIgnoreIfNull]
-    public int DateExpiration { get; set; }
+    public int ExpirationDay { get; set; }
 
     [DataMember]
     [BsonIgnoreIfNull]
     public int ClosingDay { get; set; }
-
-    [DataMember]
-    [BsonIgnoreIfNull]
-    public bool Payment { get; set; }
-
-    [DataMember]
-    [BsonIgnoreIfNull]
-    [BsonRepresentation(BsonType.String)]
-    public Status Status { get; set; }
 
     [DataMember]
     [BsonIgnoreIfNull]
@@ -76,19 +64,13 @@ public class CardModel : EntityBase
 
     #region [ Public Methods ]
 
-    public void Update(string name, string color, int dateExpiration, CardType type)
+    public void Update(string name, string color, int expirationDay, int closingDay, CardType type)
     {
         Name = name;
         Color = color;
-        DateExpiration = dateExpiration;
+        ExpirationDay = expirationDay;
+        ClosingDay = closingDay;
         Type = type;
-        UpdateDate = DateTime.UtcNow;
-    }
-
-    public void UpdatePayment ()
-    {
-        Payment = true;
-        Status = Status.PAID_OUT;
         UpdateDate = DateTime.UtcNow;
     }
 

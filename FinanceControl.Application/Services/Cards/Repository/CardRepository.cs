@@ -1,4 +1,5 @@
 ﻿using FinanceControl.Application.Services.Cards.Model;
+using FinanceControl.Application.Services.Wallet.Model;
 using FinanceControl.Extensions.BaseRepository;
 using FinanceControl.Extensions.Paginated;
 using FinanceControl.WebApi.Extensions.Context;
@@ -54,9 +55,7 @@ public class CardRepository : BaseRepository<CardModel>
             {
                 CardId = c.CardId,
                 Name = c.Name,
-                Payment = c.Payment,
-                Status = c.Status,
-                DateExpiration = c.DateExpiration,
+                ExpirationDay = c.ExpirationDay,
                 ClosingDay = c.ClosingDay,
                 Color = c.Color,
                 Active = c.Active,
@@ -102,11 +101,11 @@ public class CardRepository : BaseRepository<CardModel>
             {
                 CardId = c.CardId,
                 Name = c.Name,
-                Payment = c.Payment,
-                Status = c.Status,
-                DateExpiration = c.DateExpiration,
+                ExpirationDay = c.ExpirationDay,
+                ClosingDay = c.ClosingDay,
                 Color = c.Color,
-                Active = c.Active
+                Active = c.Active,
+                Type = c.Type
             })
             .ToListAsync();
 
@@ -136,28 +135,9 @@ public class CardRepository : BaseRepository<CardModel>
         var update = Builders<CardModel>.Update
             .Set(rec => rec.Name, model.Name)
             .Set(rec => rec.Color, model.Color)
-            .Set(rec => rec.DateExpiration, model.DateExpiration)
-            .Set(p => p.UpdateDate, DateTime.UtcNow);
-
-        await UpdateOneAsync(update, filter);
-    }
-
-    /// <summary>
-    /// Atualiza os dados de um Cartão
-    /// </summary>
-    /// <param name="walletId"></param>
-    /// <param name="model"></param>
-    /// <returns></returns>
-    public async Task UpdatePayment(Guid walletId, CardModel model)
-    {
-        var filter = Builders<CardModel>.Filter
-            .Where(x => x.Wallet.WalletId.Equals(walletId)
-                        && x.CardId.Equals(model.CardId)
-                        && x.Active.Equals(true));
-
-        var update = Builders<CardModel>.Update
-            .Set(rec => rec.Payment, model.Payment)
-            .Set(rec => rec.Status, model.Status)
+            .Set(rec => rec.Type, model.Type)
+            .Set(rec => rec.ExpirationDay, model.ExpirationDay)
+            .Set(rec => rec.ClosingDay, model.ClosingDay)
             .Set(p => p.UpdateDate, DateTime.UtcNow);
 
         await UpdateOneAsync(update, filter);
@@ -168,7 +148,6 @@ public class CardRepository : BaseRepository<CardModel>
     /// </summary>
     /// <param name="walletId"></param>
     /// <param name="cardId"></param>
-    /// <param name="active"></param>
     /// <returns></returns>
     public async Task UpdateActive(Guid walletId, Guid cardId)
     {
@@ -202,6 +181,21 @@ public class CardRepository : BaseRepository<CardModel>
             .Set(p => p.UpdateDate, DateTime.Now);
 
         await UpdateOneAsync(update, filter);
+    }
+
+    /// <summary>
+    /// Exclui um Cartão
+    /// </summary>
+    /// <param name="walletId"></param>
+    /// <param name="cardId"></param>
+    /// <returns></returns>
+    public async Task Delete(Guid walletId, Guid cardId)
+    {
+        var filter = Builders<CardModel>.Filter
+            .Where(x => x.CardId.Equals(cardId)
+                        && x.Wallet.WalletId.Equals(walletId));
+
+        await DeleteOneAsync(filter);
     }
 
     #endregion

@@ -46,7 +46,7 @@ public class CardController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetById([FromRoute] Guid cardId, [FromRoute] Guid walletId)
     {
-        using var service = new CardService(_appSettings, _logger, GetCurrentUserId());
+        using var service = new CardService(_appSettings, _logger, _request.UserId);
         return Ok(await service.GetById(walletId, cardId));
     }
 
@@ -62,7 +62,7 @@ public class CardController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll([FromRoute] Guid walletId, [FromQuery] string search = null, [FromQuery] int take = 20, [FromQuery] int skip = 1)
     {
-        using var service = new CardService(_appSettings, _logger, GetCurrentUserId());
+        using var service = new CardService(_appSettings, _logger, _request.UserId);
         return Ok(await service.GetAll(walletId, search, take, skip));
     }
 
@@ -74,24 +74,10 @@ public class CardController : BaseController
     /// <returns></returns>
     [HttpPut("/v1/card/{cardId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> Update([FromRoute] Guid cardId, [FromBody] CardInsertRequest request)
+    public async Task<IActionResult> Update([FromRoute] Guid cardId, [FromBody] CardUpdateRequest request)
     {
-        using var service = new CardService(_appSettings, _logger, GetCurrentUserId());
+        using var service = new CardService(_appSettings, _logger, _request.UserId);
         return Ok(await service.Update(cardId, request));
-    }
-
-    /// <summary>
-    /// Atualiza os dados de pagamento de um cartão
-    /// </summary>
-    /// <param name="cardId"></param>
-    /// <param name="walletId"></param>
-    /// <returns></returns>
-    [HttpPut("/v1/card/{cardId}/wallet/{walletId}/payment")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> UpdatePayment([FromRoute] Guid cardId, [FromRoute] Guid walletId)
-    {
-        using var service = new CardService(_appSettings, _logger, GetCurrentUserId());
-        return Ok(await service.UpdatePayment(walletId, cardId));
     }
 
     /// <summary>
@@ -104,7 +90,7 @@ public class CardController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Active([FromRoute] Guid walletId, [FromRoute] Guid cardId)
     {
-        using var service = new CardService(_appSettings, _logger, GetCurrentUserId());
+        using var service = new CardService(_appSettings, _logger, _request.UserId);
         return Ok(await service.Active(walletId, cardId));
     }
 
@@ -118,7 +104,7 @@ public class CardController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Inactive([FromRoute] Guid walletId, [FromRoute] Guid cardId)
     {
-        using var service = new CardService(_appSettings, _logger, GetCurrentUserId());
+        using var service = new CardService(_appSettings, _logger, _request.UserId);
         return Ok(await service.Inactive(walletId, cardId));
     }
 
@@ -132,7 +118,7 @@ public class CardController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Delete([FromRoute] Guid cardId, [FromRoute] Guid walletId)
     {
-        using var service = new CardService(_appSettings, _logger, GetCurrentUserId());
+        using var service = new CardService(_appSettings, _logger, _request.UserId);
         return Ok(await service.Delete(cardId, walletId));
     }
     
