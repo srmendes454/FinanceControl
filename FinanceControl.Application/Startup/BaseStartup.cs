@@ -7,6 +7,8 @@ using System.Text;
 using System.Xml.Linq;
 using FinanceControl.Application.Extensions.RequestContainer;
 using FinanceControl.Application.Extensions.Utils.Email;
+using FinanceControl.Application.Extensions.Utils.Repetition;
+using FinanceControl.Application.Extensions.Utils.SignedBy;
 using FinanceControl.Extensions.AppSettings;
 using FinanceControl.Extensions.BaseEnvironment;
 using FinanceControl.WebApi.Extensions.Context;
@@ -119,6 +121,8 @@ public class BaseStartup
         services.AddSingleton<IAppSettings, AppSettings>();
         
         services.AddScoped<IEmail, Email>();
+        services.AddScoped<IAddRepetition, AddRepetition>();
+        services.AddScoped<ISignedBy, SignedBy>();
         services.AddScoped<IRequestContainer>(a =>
         {
             var httpContext = services.BuildServiceProvider().GetService<IHttpContextAccessor>();
@@ -140,7 +144,7 @@ public class BaseStartup
                 if (userId == null)
                     throw new InvalidOperationException("TOKEN_INVALID");
 
-                var name = jwtToken.Claims.FirstOrDefault(p => p.Type.ToLower().Equals("name"))?.Value;
+                var name = jwtToken.Claims.FirstOrDefault(p => p.Type.ToLower().Equals("unique_name"))?.Value;
                 if (name == null)
                     throw new InvalidOperationException("TOKEN_INVALID");
 

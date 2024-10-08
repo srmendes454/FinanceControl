@@ -367,7 +367,7 @@ public class Email : IEmail
 																                <p class=""text""
 																	                style=""color:#3E6943;font-family:Poppins,'Open Sans',Helvetica,Arial,sans-serif;font-size:16px;font-weight:700;font-style:normal;letter-spacing:normal;line-height:16px;text-transform:none;text-align:center;padding:0;margin:0"">
 																	                Compra {nameTransaction} no valor de R$ {valueTransaction}
-																	                via {namePayment}-{typePayment}
+																	                via {typePayment} | {namePayment}
 																                </p>
 																                <br>
 																                <p

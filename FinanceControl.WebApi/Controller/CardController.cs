@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using FinanceControl.Application.Extensions.ControllerBase;
 using FinanceControl.Application.Extensions.RequestContainer;
 using FinanceControl.Application.Services.Cards.Service;
+using FinanceControl.Application.Services.Transactions.Service;
 
 namespace FinanceControl.Controller;
 
@@ -121,6 +122,22 @@ public class CardController : BaseController
         using var service = new CardService(_appSettings, _logger, _request.UserId);
         return Ok(await service.Delete(cardId, walletId));
     }
-    
+
+    #region [ List Enuns ]
+
+    /// <summary>
+    /// Lista todos os tipos de Cartões
+    /// </summary>
+    /// <returns></returns>
+    [HttpGet("/v1/card/type")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public IActionResult ListCardTypes()
+    {
+        using var service = new CardService(_appSettings, _logger, _request.UserId);
+        return Ok(service.ListCardTypes());
+    }
+
+    #endregion
+
     #endregion
 }

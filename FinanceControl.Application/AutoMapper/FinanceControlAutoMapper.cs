@@ -4,6 +4,8 @@ using FinanceControl.Application.Services.Cards.Mapper;
 using FinanceControl.Application.Services.Transactions.Mapper;
 using FinanceControl.Application.Services.User.Mapper;
 using FinanceControl.Application.Services.Wallet.Mapper;
+using FinanceControl.Application.Services.BankSlip.Mapper;
+using FinanceControl.Application.Services.Pix.Mapper;
 
 namespace FinanceControl.Application.AutoMapper
 {
@@ -17,6 +19,8 @@ namespace FinanceControl.Application.AutoMapper
             services.AddAutoMapper(typeof(WalletMapper));
             services.AddAutoMapper(typeof(CardMapper));
             services.AddAutoMapper(typeof(TransactionsMapper));
+            services.AddAutoMapper(typeof(BankSlipMapper));
+            services.AddAutoMapper(typeof(PixMapper));
         }
     }
 }

@@ -1,19 +1,20 @@
-﻿using FinanceControl.Cards.DTO_s;
+﻿using Amazon.Runtime.Internal;
+using FinanceControl.Application.Extensions.BaseService;
+using FinanceControl.Application.Extensions.Enum;
+using FinanceControl.Application.Services.Cards.DTO_s;
+using FinanceControl.Application.Services.Cards.Model;
+using FinanceControl.Application.Services.Cards.Model.Enum;
+using FinanceControl.Application.Services.Cards.Repository;
+using FinanceControl.Application.Services.Transactions.Model.Enum;
+using FinanceControl.Application.Services.Wallet.Repository;
+using FinanceControl.Cards.DTO_s;
+using FinanceControl.Extensions.AppSettings;
 using FinanceControl.Extensions.Paginated;
-using MongoDB.Driver;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using FinanceControl.Application.Extensions.BaseService;
-using FinanceControl.Application.Extensions.Enum;
-using FinanceControl.Application.Services.Cards.DTO_s;
-using FinanceControl.Extensions.AppSettings;
-using ILogger = Serilog.ILogger;
-using FinanceControl.Application.Services.Cards.Model.Enum;
-using FinanceControl.Application.Services.Cards.Model;
-using FinanceControl.Application.Services.Cards.Repository;
-using FinanceControl.Application.Services.Wallet.Repository;
 
 namespace FinanceControl.Application.Services.Cards.Service;
 
@@ -125,7 +126,7 @@ public class CardService : BaseService
             var record = _mapper.Map<List<CardResponse>>(list.Records);
             var result = new PaginatedResponse<CardResponse>
             {
-                Records = record.ToList(),
+                Records = [..record],
                 Total = list.Total
             };
 
@@ -234,6 +235,30 @@ public class CardService : BaseService
             await repository.Delete(walletId, cardId);
 
             return SuccessResponse(Card, Message.SUCCESSFULLY_DELETED.GetEnumDescription());
+        }
+        catch (Exception ex)
+        {
+            return ErrorResponse(ex);
+        }
+    }
+
+    #endregion
+
+    #region [ List Enuns ]
+
+    /// <summary>
+    /// Listagem do Tipos de Cartões
+    /// </summary>
+    /// <returns></returns>
+    public ResultValue ListCardTypes()
+    {
+        try
+        {
+            var result = Enum.GetValues<CardType>().GetEnumDescriptionAtributte();
+            if (result == null || result.Count <= 0)
+                return ErrorResponse("Tipos de Cartões não encontrado!");
+
+            return SuccessResponse(result);
         }
         catch (Exception ex)
         {

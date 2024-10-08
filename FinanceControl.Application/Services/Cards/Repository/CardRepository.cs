@@ -1,14 +1,13 @@
 ﻿using FinanceControl.Application.Services.Cards.Model;
-using FinanceControl.Application.Services.Wallet.Model;
 using FinanceControl.Extensions.BaseRepository;
 using FinanceControl.Extensions.Paginated;
 using FinanceControl.WebApi.Extensions.Context;
 using MongoDB.Driver;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using ILogger = Serilog.ILogger;
 
 namespace FinanceControl.Application.Services.Cards.Repository;
 

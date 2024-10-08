@@ -10,8 +10,8 @@ namespace FinanceControl.Application.Extensions.Enum
         [Description("Fechada")]
         CLOSED,
 
-        [Description("A pagar")]
-        PAYABLE,
+        [Description("Disponivel para pagamento")]
+        AVAILABLE_FOR_PAYMENT,
 
         [Description("Atrasada")]
         OVERDUE,

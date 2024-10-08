@@ -1,22 +1,40 @@
-﻿using System;
+﻿using FinanceControl.Application.Services.Transactions.Model;
+using System;
 
 namespace FinanceControl.Application.Services.Transactions.DTO_s.Response
 {
     public class TransactionsResponse
     {
         public Guid TransactionId { get; set; }
+        public Guid Id { get; set; }
         public string Name { get; set; }
         public string Type { get; set; }
         public string CashFlow { get; set; }
+        public string ExpenseType { get; set; }
         public DateTime DatePurchase { get; set; }
-        public TransactionsRepetitionResponse Repetition { get; set; }
+        public double Value { get; set; }
         public TransactionsAssignedResponse Assigned { get; set; }
+        public TransactionsRepetitionResponse Repetition { get; set; }
+    }
+
+    public class TransactionsListResponse
+    {
+        public Guid TransactionId { get; set; }
+        public Guid Id { get; set; }
+        public string Name { get; set; }
+        public string Type { get; set; }
+        public string CashFlow { get; set; }
+        public string ExpenseType { get; set; }
+        public string DatePurchase { get; set; }
+        public string Assigned { get; set; }
+        public double Value { get; set; }
+        public string Installment { get; set; }
     }
 
     public class TransactionsRepetitionResponse
     {
         public Guid RepetitionId { get; set; }
-        public int QuantityInstallment { get; set; }
+        public int NumberInstallments { get; set; }
         public int CurrentInstallment { get; set; } = 1;
         public double ValueInstallment { get; set; }
     }

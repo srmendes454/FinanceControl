@@ -20,6 +20,7 @@ namespace FinanceControl.Application.Services.Transactions.Mapper
 
             CreateMap<TransactionsModel, TransactionsResponse>();
             CreateMap<RepetitionModel, TransactionsRepetitionResponse>();
+            CreateMap<AssignedModel, TransactionsAssignedResponse>();
             CreateMap<PaymentDetailsModel, TransactionsPaymentDetailsResponse>();
 
             #endregion

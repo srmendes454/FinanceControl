@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using FinanceControl.Application.Extensions.Enum;
+using FinanceControl.Application.Services.CardBill.Model;
 using FinanceControl.Application.Services.Cards.Model;
 using FinanceControl.Cards.DTO_s;
 using System;

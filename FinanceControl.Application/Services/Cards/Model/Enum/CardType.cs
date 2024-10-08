@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using FinanceControl.Application.Extensions.Enum;
+using System.ComponentModel;
 
 namespace FinanceControl.Application.Services.Cards.Model.Enum;
 
@@ -11,5 +12,5 @@ public enum CardType
     CREDIT,
 
     [Description("Débito/Crédito")]
-    DEBIT_CREDIT,
+    DEBIT_CREDIT
 }

@@ -1,11 +1,13 @@
-﻿using FinanceControl.Application.Services.Transactions.Model.Enum;
+﻿using FinanceControl.Application.Extensions.BaseModel;
+using FinanceControl.Application.Services.Cards.Model.Enum;
+using FinanceControl.Application.Services.Transactions.Model.Enum;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Globalization;
+using System.Drawing;
 using System.Runtime.Serialization;
-using FinanceControl.Application.Extensions.BaseModel;
+using System.Xml.Linq;
 
 namespace FinanceControl.Application.Services.Transactions.Model
 {
@@ -16,17 +18,18 @@ namespace FinanceControl.Application.Services.Transactions.Model
         #region [ Constructor ]
 
         public TransactionsModel() { }
-        public TransactionsModel(Guid userId, string name, DateTime datePurchase, TransactionsCashFlow cashFlow, TransactionsType type, RepetitionModel repetition)
+        public TransactionsModel(Guid userId, string name, DateTime datePurchase, bool installment, TransactionsCashFlow cashFlow, TransactionsType type, ExpenseType expenseType)
         {
             TransactionId = Guid.NewGuid();
             Name = name;
             DatePurchase = datePurchase;
+            Installment = installment;
             CashFlow = cashFlow;
             Type = type;
+            ExpenseType = expenseType;
             Active = true;
             CreationDate = DateTime.Now;
             CreatedBy = userId;
-            Repetition = new RepetitionModel(repetition.NumberInstallments, repetition.CurrentInstallment, repetition.ValueInstallment);
         }
         #endregion
 
@@ -61,6 +64,19 @@ namespace FinanceControl.Application.Services.Transactions.Model
 
         [DataMember]
         [BsonIgnoreIfNull]
+        [BsonRepresentation(BsonType.String)]
+        public ExpenseType ExpenseType { get; set; }
+
+        [DataMember]
+        [BsonIgnoreIfNull]
+        public bool Installment { get; set; }
+
+        [DataMember]
+        [BsonIgnoreIfNull]
+        public double? Value { get; set; }
+
+        [DataMember]
+        [BsonIgnoreIfNull]
         public RepetitionModel Repetition { get; set; }
 
         [DataMember]
@@ -70,6 +86,20 @@ namespace FinanceControl.Application.Services.Transactions.Model
         [DataMember]
         [BsonIgnoreIfNull]
         public AssignedModel Assigned { get; set; }
+        #endregion
+
+        #region [ Public Methods ]
+
+        public void Update(string name, DateTime datePurchase, bool installment, TransactionsCashFlow cashFlow, ExpenseType expenseType)
+        {
+            Name = name;
+            DatePurchase = datePurchase;
+            Installment = installment;
+            CashFlow = cashFlow;
+            ExpenseType = expenseType;
+            UpdateDate = DateTime.Now;
+        }
+
         #endregion
     }
 
@@ -103,6 +133,17 @@ namespace FinanceControl.Application.Services.Transactions.Model
         [DataMember]
         [BsonIgnoreIfNull]
         public double ValueInstallment { get; set; }
+        #endregion
+
+        #region [ Public Methods ]
+
+        public void Update(int numberInstallments, int currentInstallment, double valueInstallment)
+        {
+            NumberInstallments = numberInstallments;
+            CurrentInstallment = currentInstallment;
+            ValueInstallment = valueInstallment;
+        }
+
         #endregion
     }
 
@@ -155,6 +196,17 @@ namespace FinanceControl.Application.Services.Transactions.Model
         [DataMember]
         [BsonIgnoreIfNull]
         public string Email { get; set; }
+
+        #endregion
+
+        #region [ Public Methods ]
+
+        public void Update(Guid assignedId, string name, string email)
+        {
+            AssignedId = assignedId;
+            Name = name;
+            Email = email;
+        }
 
         #endregion
     }

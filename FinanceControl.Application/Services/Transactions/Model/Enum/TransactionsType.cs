@@ -20,8 +20,5 @@ public enum TransactionsType
     BANK_TRANSFER,
 
     [Description("Saque")]
-    WITHDRAW,
-
-    [Description("Investimento")]
-    INVESTMENT
+    WITHDRAW
 }
