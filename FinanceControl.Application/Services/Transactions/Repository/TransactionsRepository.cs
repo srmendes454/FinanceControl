@@ -1,20 +1,18 @@
-﻿using FinanceControl.Application.Services.Cards.Model;
-using FinanceControl.Application.Services.Transactions.Model;
-using FinanceControl.Extensions.BaseRepository;
-using FinanceControl.Extensions.Paginated;
-using FinanceControl.WebApi.Extensions.Context;
+﻿using FinanceControl.Application.Extensions.Paginated;
+using FinanceControl.Domain.Entities;
+using FinanceControl.Infra.AppSettings;
+using FinanceControl.Infra.BaseRepository;
+using FinanceControl.Infra.Context;
 using MongoDB.Driver;
 using Serilog;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using System;
+using System.Collections.Generic;
 using System.Linq;
-using FinanceControl.Application.Services.Transactions.Model.Enum;
-using FinanceControl.Application.Extensions.Enum;
+using System.Threading.Tasks;
 
 namespace FinanceControl.Application.Services.Transactions.Repository
 {
-    public class TransactionsRepository : BaseRepository<TransactionsModel>
+    public class TransactionsRepository : BaseRepository<TransactionsModel>, ITransactionsRepository
     {
         #region [ Fields ]
         public IMongoCollection<TransactionsModel> GetTransactionCollection() => GetMongoCollection();
@@ -22,9 +20,7 @@ namespace FinanceControl.Application.Services.Transactions.Repository
 
         #region [ Constructor ]
 
-        public TransactionsRepository(IContextMongoDBDatabase mongoDb, ILogger logger) : base(logger: logger,
-            mongoDb: mongoDb,
-            collectionName: "Transaction")
+        public TransactionsRepository(IContextMongoDBDatabase mongoDb, IAppSettings appSettings) : base(mongoDb, appSettings, "Transaction")
         {
 
         }
@@ -60,12 +56,18 @@ namespace FinanceControl.Application.Services.Transactions.Repository
             if (!string.IsNullOrEmpty(type))
                 filters.Add(filter.Where(x => x.Type.ToString() == type));
 
+            if (month > 0 && year > 0)
+            {
+                var yearMonthReference = $"{year:0000}/{month:00}";
+                filters.Add(filter.Where(x => x.YearMonthReference.Equals(yearMonthReference)));
+            }
+
             if (filters.Count > 0)
                 foreach (var filterDefinition in filters)
                     mainFilter &= filterDefinition;
 
             var sort = Builders<TransactionsModel>.Sort
-                .Ascending(x => x.Name);
+                .Ascending(x => x.ExpirationDate);
 
             var result = await GetTransactionCollection()
                 .Aggregate()
@@ -79,6 +81,7 @@ namespace FinanceControl.Application.Services.Transactions.Repository
                     ExpenseType = t.ExpenseType,
                     DatePurchase = t.DatePurchase,
                     ExpirationDate = t.ExpirationDate,
+                    YearMonthReference = t.YearMonthReference,
                     Repetition = t.Repetition,
                     Type = t.Type,
                     PaymentDetails = t.PaymentDetails,
@@ -87,9 +90,6 @@ namespace FinanceControl.Application.Services.Transactions.Repository
                     Installment = t.Installment
                 })
                 .ToListAsync();
-
-            if (month > 0 && year > 0)
-                result = result.Where(x => (month > 0 ? x.ExpirationDate.Month == month : x.ExpirationDate.Month == DateTime.Now.Month) && (year > 0 ? x.ExpirationDate.Year == year : x.ExpirationDate.Year == DateTime.Now.Year)).ToList();
 
             var records = result.Skip((skip - 1) * take).Take(take);
             var newResult = new PaginatedResponse<TransactionsModel>
@@ -113,7 +113,7 @@ namespace FinanceControl.Application.Services.Transactions.Repository
                             && t.Active.Equals(true));
 
             var sort = Builders<TransactionsModel>.Sort
-                .Ascending(x => x.Name);
+                .Ascending(x => x.ExpirationDate);
 
             var result = await GetTransactionCollection()
                 .Aggregate()
@@ -148,9 +148,11 @@ namespace FinanceControl.Application.Services.Transactions.Repository
         /// <returns></returns>
         public async Task<TransactionsModel> GetByIdAndDate(Guid transactionId, int year, int month)
         {
+            var yearMonthReference = $"{year:0000}/{month:00}";
             var filter = Builders<TransactionsModel>.Filter
                 .Where(t => t.TransactionId == transactionId
-                            && t.Active.Equals(true));
+                        && t.YearMonthReference.Equals(yearMonthReference)
+                        && t.Active.Equals(true));
 
             var record = await GetTransactionCollection()
                 .Aggregate()
@@ -171,10 +173,9 @@ namespace FinanceControl.Application.Services.Transactions.Repository
                     Installment = t.Installment,
                     CreatedBy = t.CreatedBy
                 })
-                .ToListAsync();
+                .FirstOrDefaultAsync();
 
-            var result = record.FirstOrDefault(x => (month > 0 ? x.ExpirationDate.Month == month : x.ExpirationDate.Month == DateTime.Now.Month) && (year > 0 ? x.ExpirationDate.Year == year : x.ExpirationDate.Year == DateTime.Now.Year));
-            return result;
+            return record;
         }
 
         /// <summary>
@@ -184,11 +185,12 @@ namespace FinanceControl.Application.Services.Transactions.Repository
         /// <param name="year"></param>
         /// <param name="month"></param>
         /// <returns></returns>
-        public async Task<List<TransactionsModel>> GetAllByCardIdAndDate(Guid cardId, DateTime closingDatePrevious, DateTime closingDateActual)
+        public async Task<List<TransactionsModel>> GetAllByCardIdAndDate(Guid cardId, int year, int month)
         {
+            var yearMonthReference = $"{year:0000}/{month:00}";
             var filter = Builders<TransactionsModel>.Filter
                 .Where(t => t.PaymentDetails.Id == cardId
-                            && t.DatePurchase > closingDatePrevious && t.DatePurchase < closingDateActual
+                            && t.YearMonthReference.Equals(yearMonthReference)
                             && t.Active.Equals(true));
 
             var result = await GetTransactionCollection()
@@ -219,7 +221,7 @@ namespace FinanceControl.Application.Services.Transactions.Repository
                             && t.Active.Equals(true));
 
             var sort = Builders<TransactionsModel>.Sort
-                .Ascending(x => x.Name);
+                .Ascending(x => x.ExpirationDate);
 
             var result = await GetTransactionCollection()
                 .Aggregate()
@@ -234,7 +236,9 @@ namespace FinanceControl.Application.Services.Transactions.Repository
                     Repetition = t.Repetition,
                     Type = t.Type,
                     PaymentDetails = t.PaymentDetails,
-                    Assigned = t.Assigned
+                    Assigned = t.Assigned,
+                    YearMonthReference = t.YearMonthReference,
+                    ExpirationDate = t.ExpirationDate
                 })
                 .ToListAsync();
 
@@ -251,7 +255,8 @@ namespace FinanceControl.Application.Services.Transactions.Repository
         {
             var filter = Builders<TransactionsModel>.Filter
                 .Where(x => x.TransactionId.Equals(transactionId)
-                            && x.Active.Equals(true));
+                        && x.YearMonthReference.Equals(model.YearMonthReference)
+                        && x.Active.Equals(true));
 
             var update = Builders<TransactionsModel>.Update
                 .Set(rec => rec.Name, model.Name)
@@ -273,10 +278,10 @@ namespace FinanceControl.Application.Services.Transactions.Repository
         /// <returns></returns>
         public async Task Delete(Guid transactionId, int year, int month)
         {
+            var yearMonthReference = $"{year:0000}/{month:00}";
             var filter = Builders<TransactionsModel>.Filter
                 .Where(t => t.TransactionId == transactionId
-                        && t.DatePurchase.Month == month
-                        && t.DatePurchase.Year == year);
+                        && t.YearMonthReference.Equals(yearMonthReference));
 
             await DeleteOneAsync(filter);
         }
@@ -330,6 +335,28 @@ namespace FinanceControl.Application.Services.Transactions.Repository
                 .Set(p => p.UpdateDate, DateTime.UtcNow);
 
             await UpdateManyAsync(update, filter);
+        }
+
+        /// <summary>
+        /// Move as Transações
+        /// </summary>
+        /// <param name="transactions"></param>
+        /// <returns></returns>
+        public async Task UpdateMove(Guid transactionId, string yearMonthReference, TransactionsModel transaction)
+        {
+            var filter = Builders<TransactionsModel>.Filter
+                .Where(x => x.TransactionId.Equals(transactionId)
+                            && x.YearMonthReference.Equals(yearMonthReference)
+                            && x.Repetition != null
+                            && x.Repetition.CurrentInstallment.Equals(transaction.Repetition.CurrentInstallment)
+                            && x.Active.Equals(true));
+
+            var update = Builders<TransactionsModel>.Update
+                .Set(rec => rec.ExpirationDate, transaction.ExpirationDate)
+                .Set(rec => rec.YearMonthReference, transaction.YearMonthReference)
+                .Set(p => p.UpdateDate, DateTime.UtcNow);
+
+            await UpdateOneAsync(update, filter);
         }
 
         #region [ Duties ]

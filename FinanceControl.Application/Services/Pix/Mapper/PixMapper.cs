@@ -1,7 +1,7 @@
 ﻿using AutoMapper;
-using FinanceControl.Application.Extensions.Enum;
 using FinanceControl.Application.Services.Pix.DTO_s.Response;
-using FinanceControl.Application.Services.Pix.Model;
+using FinanceControl.Domain.Entities;
+using FinanceControl.Domain.Enuns;
 
 namespace FinanceControl.Application.Services.Pix.Mapper
 {

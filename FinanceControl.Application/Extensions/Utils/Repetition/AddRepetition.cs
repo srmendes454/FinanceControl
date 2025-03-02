@@ -1,6 +1,4 @@
-﻿using FinanceControl.Application.Services.Cards.Model;
-using FinanceControl.Application.Services.Transactions.Model;
-using Microsoft.VisualBasic;
+﻿using FinanceControl.Domain.Entities;
 using System;
 using System.Collections.Generic;
 
@@ -15,7 +13,7 @@ namespace FinanceControl.Application.Extensions.Utils.Repetition
             var dateExpiration = new DateTime(DateTime.Now.Year, DateTime.Now.Month, expirationDay);
 
             var transactions = new List<TransactionsModel>();
-            if (DateTime.Today < closingDate)
+            if (model.DatePurchase < closingDate)
             {
                 while (currentInstallment <= quantityInstallment)
                 {
@@ -36,11 +34,11 @@ namespace FinanceControl.Application.Extensions.Utils.Repetition
             return transactions;
         }
 
-        public List<TransactionsModel> AddRepetitionCardDebitAndPix(int quantityInstallment, int currentInstallment, int expirationDay, TransactionsModel model)
+        public List<TransactionsModel> AddRepetitionCardDebitAndPix(int quantityInstallment, int currentInstallment, TransactionsModel model)
         {
             var iteration = 0;
             var installment = model.Installment;
-            var dateExpiration = new DateTime(DateTime.Now.Year, DateTime.Now.Month, expirationDay);
+            var dateExpiration = DateTime.UtcNow;
 
             var transactions = new List<TransactionsModel>();
             if (!installment)
@@ -114,6 +112,7 @@ namespace FinanceControl.Application.Extensions.Utils.Repetition
                 Type = model.Type,
                 Value = model.Value,
                 ExpirationDate = dateExpiration.AddMonths(iteration),
+                YearMonthReference = dateExpiration.AddMonths(iteration).ToString("yyyy/MM"),
                 Repetition = model.Installment ? new RepetitionModel(model.Repetition.NumberInstallments, currentInstallment, model.Repetition.ValueInstallment) : null
             };
         }

@@ -1,7 +1,7 @@
-﻿using System;
-using AutoMapper;
+﻿using AutoMapper;
 using FinanceControl.Application.Services.User.DTO_s;
-using FinanceControl.Application.Services.User.Model;
+using FinanceControl.Domain.Entities;
+using System;
 
 namespace FinanceControl.Application.Services.User.Mapper;
 

@@ -1,7 +1,8 @@
-﻿using FinanceControl.Application.Services.Cards.Model;
-using FinanceControl.Extensions.BaseRepository;
-using FinanceControl.Extensions.Paginated;
-using FinanceControl.WebApi.Extensions.Context;
+﻿using FinanceControl.Application.Extensions.Paginated;
+using FinanceControl.Domain.Entities;
+using FinanceControl.Infra.AppSettings;
+using FinanceControl.Infra.BaseRepository;
+using FinanceControl.Infra.Context;
 using MongoDB.Driver;
 using Serilog;
 using System;
@@ -11,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace FinanceControl.Application.Services.Cards.Repository;
 
-public class CardRepository : BaseRepository<CardModel>
+public class CardRepository : BaseRepository<CardModel>, ICardRepository
 {
     #region [ Fields ]
     public IMongoCollection<CardModel> GetCardCollection() => GetMongoCollection();
@@ -19,9 +20,7 @@ public class CardRepository : BaseRepository<CardModel>
 
     #region [ Constructor ]
 
-    public CardRepository(IContextMongoDBDatabase mongoDb, ILogger logger) : base(logger: logger,
-        mongoDb: mongoDb,
-        collectionName: "Card")
+    public CardRepository(IContextMongoDBDatabase mongoDb, IAppSettings appSettings) : base(mongoDb, appSettings, "Card")
     {
 
     }
@@ -36,11 +35,10 @@ public class CardRepository : BaseRepository<CardModel>
     /// <param name="cardId"></param>
     /// <param name="walletId"></param>
     /// <returns></returns>
-    public async Task<CardModel> GetById(Guid cardId, Guid walletId)
+    public async Task<CardModel> GetById(Guid cardId)
     {
         var filter = Builders<CardModel>.Filter
             .Where(p => p.CardId.Equals(cardId)
-                        && p.Wallet.WalletId.Equals(walletId)
                         && p.Active.Equals(true));
 
         var sort = Builders<CardModel>.Sort
@@ -124,11 +122,10 @@ public class CardRepository : BaseRepository<CardModel>
     /// <param name="walletId"></param>
     /// <param name="model"></param>
     /// <returns></returns>
-    public async Task Update(Guid walletId, CardModel model)
+    public async Task Update(CardModel model)
     {
         var filter = Builders<CardModel>.Filter
-            .Where(x => x.Wallet.WalletId.Equals(walletId)
-                        && x.CardId.Equals(model.CardId)
+            .Where(x => x.CardId.Equals(model.CardId)
                         && x.Active.Equals(true));
 
         var update = Builders<CardModel>.Update
@@ -145,14 +142,12 @@ public class CardRepository : BaseRepository<CardModel>
     /// <summary>
     /// Atualiza os dados de um Cartão
     /// </summary>
-    /// <param name="walletId"></param>
     /// <param name="cardId"></param>
     /// <returns></returns>
-    public async Task UpdateActive(Guid walletId, Guid cardId)
+    public async Task UpdateActive(Guid cardId)
     {
         var filter = Builders<CardModel>.Filter
-            .Where(x => x.Wallet.WalletId.Equals(walletId)
-                        && x.CardId.Equals(cardId)
+            .Where(x => x.CardId.Equals(cardId)
                         && x.Active.Equals(false));
 
         var update = Builders<CardModel>.Update
@@ -165,14 +160,12 @@ public class CardRepository : BaseRepository<CardModel>
     /// <summary>
     /// Atualiza os dados de um Cartão
     /// </summary>
-    /// <param name="walletId"></param>
     /// <param name="cardId"></param>
     /// <returns></returns>
-    public async Task UpdateInactive(Guid walletId, Guid cardId)
+    public async Task UpdateInactive(Guid cardId)
     {
         var filter = Builders<CardModel>.Filter
-            .Where(x => x.Wallet.WalletId.Equals(walletId)
-                        && x.CardId.Equals(cardId)
+            .Where(x => x.CardId.Equals(cardId)
                         && x.Active.Equals(true));
 
         var update = Builders<CardModel>.Update
@@ -185,14 +178,12 @@ public class CardRepository : BaseRepository<CardModel>
     /// <summary>
     /// Exclui um Cartão
     /// </summary>
-    /// <param name="walletId"></param>
     /// <param name="cardId"></param>
     /// <returns></returns>
-    public async Task Delete(Guid walletId, Guid cardId)
+    public async Task Delete(Guid cardId)
     {
         var filter = Builders<CardModel>.Filter
-            .Where(x => x.CardId.Equals(cardId)
-                        && x.Wallet.WalletId.Equals(walletId));
+            .Where(x => x.CardId.Equals(cardId));
 
         await DeleteOneAsync(filter);
     }

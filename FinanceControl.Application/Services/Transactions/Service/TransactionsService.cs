@@ -1,23 +1,17 @@
-﻿using FinanceControl.Application.Extensions.BaseService;
-using FinanceControl.Application.Extensions.Enum;
+﻿using FinanceControl.Application.Extensions.Paginated;
 using FinanceControl.Application.Extensions.Utils.Email;
 using FinanceControl.Application.Extensions.Utils.Repetition;
-using FinanceControl.Application.Extensions.Utils.SignedBy;
 using FinanceControl.Application.Services.BankSlip.Repository;
-using FinanceControl.Application.Services.Cards.Model.Enum;
 using FinanceControl.Application.Services.Cards.Repository;
 using FinanceControl.Application.Services.Pix.Repository;
 using FinanceControl.Application.Services.Transactions.DTO_s.Request;
 using FinanceControl.Application.Services.Transactions.DTO_s.Response;
-using FinanceControl.Application.Services.Transactions.Model;
-using FinanceControl.Application.Services.Transactions.Model.Enum;
 using FinanceControl.Application.Services.Transactions.Repository;
-using FinanceControl.Application.Services.User.Model;
 using FinanceControl.Application.Services.User.Repository;
-using FinanceControl.Extensions.AppSettings;
-using FinanceControl.Extensions.Paginated;
-using MongoDB.Driver.Linq;
-using Serilog;
+using FinanceControl.Domain.Entities;
+using FinanceControl.Domain.Enuns;
+using FinanceControl.Infra.AppSettings;
+using FinanceControl.Infra.BaseService;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -25,69 +19,75 @@ using System.Threading.Tasks;
 
 namespace FinanceControl.Application.Services.Transactions.Service
 {
-    public class TransactionsService : BaseService
+    public class TransactionsService : BaseService<TransactionsService>, ITransactionsService
     {
         #region [ Fields ]
 
+        private readonly ITransactionsRepository _repository;
+        private readonly IUserRepository _userRepository;
+        private readonly ICardRepository _cardRepository;
+        private readonly IBankSlipRepository _bankSlipRepository;
+        private readonly IPixRepository _pixRepository;
         private readonly IEmail _email;
         private readonly IAddRepetition _addRepetition;
-        private readonly ISignedBy _signedBy;
 
         #endregion
 
         #region [ Constructor ]
 
-        public TransactionsService(IAppSettings appSettings, ILogger logger,
-            Guid currentUserId, IEmail email, IAddRepetition addRepetition, ISignedBy signedBy) : base(logger: logger, appSettings: appSettings,
-            currentUserId: currentUserId)
+        public TransactionsService(IAppSettings appSettings, 
+            ITransactionsRepository repository,
+            IUserRepository userRepository,
+            ICardRepository cardRepository,
+            IBankSlipRepository bankSlipRepository,
+            IPixRepository pixRepository,
+            IEmail email, 
+            IAddRepetition addRepetition) : base(appSettings)
         {
+            _repository = repository;
+            _userRepository = userRepository;
+            _cardRepository = cardRepository;
+            _bankSlipRepository = bankSlipRepository;
+            _pixRepository = pixRepository;
             _email = email;
             _addRepetition = addRepetition;
-            _signedBy = signedBy;
         }
 
         #endregion
 
         #region [ Messages ]
 
-        private const string CardNotFound = "Cartão de Crédito não encontrado";
-        private const string DebitNotFound = "Cartão de Débito não encontrado";
+        private const string CardNotFound = "Cartão não encontrado";
         private const string BankSlipNotFound = "Boleto Bancário não encontrado";
-        private const string PixNotFound = "Pix não encontrado";
-        private const string UserNotFound = "Usuário não encontrado";
-        private const string FamilyMemberNotFound = "Membro Familiar não encontrado";
-        private const string TypeCannotBeNull = "Tipo não pode ser vazio";
         private const string TransactionNotFound = "Transação não encontrada";
+        private const string TransactionsNotFound = "Transações não encontradas";
         private const string Transaction = "Transação";
         private const string SubjectEmail = "Controle Financeiro | Você foi marcado em uma transação";
         private const string ExpenseTypeNotFound = "Nenhum Tipo de Despesa foi encontrado";
         private const string CashFlowNotFound = "Nenhum Fluxo de Caixa foi encontrado";
         private const string TransactionsTypeNotFound = "Nenhum Tipo de Transação foi encontrado";
+        private const string TransactionEvaluated = "Transação avaliada com sucesso!";
 
         #endregion
 
         #region [ Public Methods ]
 
         /// <summary>
-        /// Serviço para inserir uma Transação
+        /// Serviço para inserir Transação por Cartão
         /// </summary>
         /// <param name="request"></param>
         /// <returns></returns>
-        public async Task<ResultValue> Insert(TransactionsInsertRequest request)
+        public async Task<ResultValue> InsertToCard(Guid cardId, TransactionsInsertRequest request)
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(request.Type))
-                    return ErrorResponse(TypeCannotBeNull);
-
                 var userId = GetCurrentUserId();
-                if (request.WalletId == Guid.Empty && userId == Guid.Empty && request == null && request.Id == Guid.Empty)
-                    return ErrorResponse(Message.INVALID_OBJECT.ToString());
+                if (cardId == Guid.Empty || userId == Guid.Empty || request == null)
+                    return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-                using var useRepository = new UserRepository(_appSettings.GetMongoDb(), _logger);
-                var user = await useRepository.GetById(userId);
+                var user = await _userRepository.GetById(userId);
                 if (user == null)
-                    return ErrorResponse(UserNotFound);
+                    return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
 
                 var model = new TransactionsModel(
                     userId,
@@ -99,150 +99,170 @@ namespace FinanceControl.Application.Services.Transactions.Service
                     Enum.Parse<ExpenseType>(request.ExpenseType)
                 );
 
-                var transactions = new List<TransactionsModel>();
-                switch (model.Type)
+                var card = await _cardRepository.GetById(cardId);
+                if (card == null)
+                    return ErrorResponse(CardNotFound);
+
+                AssignedFor(request.AssignedId, user, model, card.Name, card.Type.GetEnumDescription());
+
+                model.PaymentDetails = new PaymentDetailsModel(card.CardId, card.Name);
+
+                if (model.Installment)
                 {
-                    case TransactionsType.CREDIT_CARD:
-                        {
-                            using var cardRepository = new CardRepository(_appSettings.GetMongoDb(), _logger);
-                            var card = await cardRepository.GetById(request.Id, request.WalletId);
-                            if (card == null)
-                                return ErrorResponse(CardNotFound);
+                    model.Repetition = new RepetitionModel(request.Repetition.QuantityInstallment, request.Repetition.CurrentInstallment, request.Repetition.ValueInstallment);
 
-                            if (request.AssignedId == Guid.Empty)
-                                model.Assigned = new AssignedModel(user.UserId, "@Eu", user.Email);
-                            else
-                            {
-                                var familyMember = user.FamilyMembers?.FirstOrDefault(fm => fm.UserId.Equals(request.AssignedId));
-                                if (familyMember == null)
-                                    return ErrorResponse(FamilyMemberNotFound);
+                    var transactions = new List<TransactionsModel>();
+                    if (model.Type == TransactionsType.CREDIT_CARD)
+                    {
+                        var transactionsRepetition = _addRepetition.AddRepetitionCard(request.Repetition.QuantityInstallment, request.Repetition.CurrentInstallment, card.ClosingDay, card.ExpirationDay, model);
+                        transactions.AddRange(transactionsRepetition);
+                    }
 
-                                _signedBy.SignedByCard(user.Name, familyMember, model, card.Name, _email, SubjectEmail);
-                            }
+                    if (model.Type == TransactionsType.DEBIT_CARD)
+                    {
+                        var transactionsRepetition = _addRepetition.AddRepetitionCardDebitAndPix(request.Repetition.QuantityInstallment, request.Repetition.CurrentInstallment, model);
+                        transactions.AddRange(transactionsRepetition);
+                    }
 
-                            model.PaymentDetails = new PaymentDetailsModel(card.CardId, card.Name);
-                            if (request.Installment)
-                            {
-                                var repetition = request.Repetition;
-                                model.Repetition = new RepetitionModel(repetition.QuantityInstallment, repetition.CurrentInstallment, repetition.ValueInstallment);
-
-                                transactions.AddRange(_addRepetition.AddRepetitionCard(request.Repetition.QuantityInstallment, request.Repetition.CurrentInstallment, card.ClosingDay, card.ExpirationDay, model));
-                            }
-                            else
-                            {
-                                model.Value = request.Value;
-                                transactions.AddRange(_addRepetition.AddRepetitionCard(1, 1, card.ClosingDay, card.ExpirationDay, model));
-                            }
-                        }
-                        break;
-
-                    case TransactionsType.DEBIT_CARD:
-                        {
-                            using var cardRepository = new CardRepository(_appSettings.GetMongoDb(), _logger);
-                            var card = await cardRepository.GetById(request.Id, request.WalletId);
-                            if (card == null)
-                                return ErrorResponse(DebitNotFound);
-
-                            if (request.AssignedId == Guid.Empty)
-                                model.Assigned = new AssignedModel(user.UserId, "@Eu", user.Email);
-                            else
-                            {
-                                var familyMember = user.FamilyMembers?.FirstOrDefault(fm => fm.UserId.Equals(request.AssignedId));
-                                if (familyMember == null)
-                                    return ErrorResponse(FamilyMemberNotFound);
-
-                                _signedBy.SignedByCardDebit(user.Name, familyMember, model, card.Name, _email, SubjectEmail);
-                            }
-
-                            model.PaymentDetails = new PaymentDetailsModel(card.CardId, card.Name);
-                            if (request.Installment)
-                            {
-                                var repetition = request.Repetition;
-                                model.Repetition = new RepetitionModel(repetition.QuantityInstallment, repetition.CurrentInstallment, repetition.ValueInstallment);
-
-                                transactions.AddRange(_addRepetition.AddRepetitionCardDebitAndPix(request.Repetition.QuantityInstallment, request.Repetition.CurrentInstallment, card.ExpirationDay, model));
-                            }
-                            else
-                            {
-                                model.Value = request.Value;
-                                transactions.AddRange(_addRepetition.AddRepetitionCardDebitAndPix(1, 1, card.ExpirationDay, model));
-                            }
-                        }
-                        break;
-
-                    case TransactionsType.BANK_SLIP:
-                        {
-                            using var bankSlipRepository = new BankSlipRepository(_appSettings.GetMongoDb(), _logger);
-                            var bankSlip = await bankSlipRepository.GetById(request.Id, request.WalletId);
-                            if (bankSlip == null)
-                                return ErrorResponse(BankSlipNotFound);
-
-                            if (request.AssignedId == Guid.Empty)
-                                model.Assigned = new AssignedModel(user.UserId, "@Eu", user.Email);
-                            else
-                            {
-                                var familyMember = user.FamilyMembers?.FirstOrDefault(fm => fm.UserId.Equals(request.AssignedId));
-                                if (familyMember == null)
-                                    return ErrorResponse(FamilyMemberNotFound);
-
-                                _signedBy.SignedByBankSlip(user.Name, familyMember, model, bankSlip.Name, _email, SubjectEmail);
-                            }
-
-                            model.PaymentDetails = new PaymentDetailsModel(bankSlip.BankSlipId, bankSlip.Name);
-
-                            if (request.Installment)
-                            {
-                                var repetition = request.Repetition;
-                                model.Repetition = new RepetitionModel(repetition.QuantityInstallment, repetition.CurrentInstallment, repetition.ValueInstallment);
-
-                                transactions.AddRange(_addRepetition.AddRepetitionBankSlip(request.Repetition.QuantityInstallment, request.Repetition.CurrentInstallment, bankSlip.ExpirationDay, model));
-                            }
-                            else
-                            {
-                                model.Value = request.Value;
-                                transactions.AddRange(_addRepetition.AddRepetitionBankSlip(1, 1, bankSlip.ExpirationDay, model));
-                            }
-                        }
-                        break;
-
-                    case TransactionsType.PIX:
-                        {
-                            using var pixRepository = new PixRepository(_appSettings.GetMongoDb(), _logger);
-                            var pix = await pixRepository.GetById(request.Id, request.WalletId);
-                            if (pix == null)
-                                return ErrorResponse(PixNotFound);
-
-                            if (request.AssignedId == Guid.Empty)
-                                model.Assigned = new AssignedModel(user.UserId, "@Eu", user.Email);
-                            else
-                            {
-                                var familyMember = user.FamilyMembers?.FirstOrDefault(fm => fm.UserId.Equals(request.AssignedId));
-                                if (familyMember == null)
-                                    return ErrorResponse(FamilyMemberNotFound);
-
-                                _signedBy.SignedByPix(user.Name, familyMember, model, pix.Name, _email, SubjectEmail);
-                            }
-
-                            model.PaymentDetails = new PaymentDetailsModel(pix.PixId, pix.Name);
-
-                            if (request.Installment)
-                            {
-                                var repetition = request.Repetition;
-                                model.Repetition = new RepetitionModel(repetition.QuantityInstallment, repetition.CurrentInstallment, repetition.ValueInstallment);
-
-                                transactions.AddRange(_addRepetition.AddRepetitionCardDebitAndPix(request.Repetition.QuantityInstallment, request.Repetition.CurrentInstallment, pix.ExpirationDay, model));
-                            }
-                            else
-                            {
-                                model.Value = request.Value;
-                                transactions.AddRange(_addRepetition.AddRepetitionCardDebitAndPix(1, 1, pix.ExpirationDay, model));
-                            }
-                        }
-                        break;
+                    await _repository.InsertManyAsync(transactions);
+                }
+                else
+                {
+                    model.Value = request.Value;
+                    var dateClosing = new DateTime(model.DatePurchase.Year, model.DatePurchase.Month, card.ClosingDay);
+                    if (model.DatePurchase < dateClosing)
+                    {
+                        model.ExpirationDate = dateClosing;
+                        model.YearMonthReference = model.ExpirationDate.ToString("yyyy/MM");
+                    }
+                    else
+                    {
+                        model.ExpirationDate = dateClosing.AddMonths(1);
+                        model.YearMonthReference = model.ExpirationDate.ToString("yyyy/MM");
+                    }
+                    
+                    await _repository.InsertOneAsync(model);
                 }
 
-                await new TransactionsRepository(_appSettings.GetMongoDb(), _logger).InsertManyAsync(transactions);
-                return SuccessResponse(Transaction, Message.SUCCESSFULLY_ADDED.GetEnumDescription());
+                return SuccessResponse(Transaction, Message.SUCCESSFULLY_ADDED_F.GetEnumDescription());
+            }
+            catch (Exception ex)
+            {
+                return ErrorResponse(ex);
+            }
+        }
+
+        /// <summary>
+        /// Serviço para inserir Transação por Boleto
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        public async Task<ResultValue> InsertToBankSlip(Guid bankSlipId, TransactionsInsertRequest request)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (bankSlipId == Guid.Empty || userId == Guid.Empty || request == null)
+                    return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
+
+                var user = await _userRepository.GetById(userId);
+                if (user == null)
+                    return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
+
+                var model = new TransactionsModel(
+                    userId,
+                    request.Name,
+                    request.DatePurchase,
+                    request.Installment,
+                    Enum.Parse<TransactionsCashFlow>(request.CashFlow),
+                    Enum.Parse<TransactionsType>(request.Type),
+                    Enum.Parse<ExpenseType>(request.ExpenseType)
+                );
+
+                var bankSlip = await _bankSlipRepository.GetById(bankSlipId);
+                if (bankSlip == null)
+                    return ErrorResponse(BankSlipNotFound);
+
+                AssignedFor(request.AssignedId, user, model, bankSlip.Name, model.Type.GetEnumDescription());
+
+                model.PaymentDetails = new PaymentDetailsModel(bankSlip.BankSlipId, bankSlip.Name);
+
+                if (model.Installment)
+                {
+                    model.Repetition = new RepetitionModel(request.Repetition.QuantityInstallment, request.Repetition.CurrentInstallment, request.Repetition.ValueInstallment);
+
+                    var transactions = new List<TransactionsModel>();
+                    var transactionsRepetition = _addRepetition.AddRepetitionBankSlip(request.Repetition.QuantityInstallment, request.Repetition.CurrentInstallment, bankSlip.ExpirationDay, model);
+                    transactions.AddRange(transactionsRepetition);
+
+                    await _repository.InsertManyAsync(transactions);
+                }
+                else
+                {
+                    model.Value = request.Value;
+                    await _repository.InsertOneAsync(model);
+                }
+
+                return SuccessResponse(Transaction, Message.SUCCESSFULLY_ADDED_F.GetEnumDescription());
+            }
+            catch (Exception ex)
+            {
+                return ErrorResponse(ex);
+            }
+        }
+
+        /// <summary>
+        /// Serviço para inserir Transação por Pix
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        public async Task<ResultValue> InsertToPix(Guid pixId, TransactionsInsertRequest request)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (pixId == Guid.Empty || userId == Guid.Empty || request == null)
+                    return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
+
+                var user = await _userRepository.GetById(userId);
+                if (user == null)
+                    return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
+
+                var model = new TransactionsModel(
+                    userId,
+                    request.Name,
+                    request.DatePurchase,
+                    request.Installment,
+                    Enum.Parse<TransactionsCashFlow>(request.CashFlow),
+                    Enum.Parse<TransactionsType>(request.Type),
+                    Enum.Parse<ExpenseType>(request.ExpenseType)
+                );
+
+                var pix = await _pixRepository.GetById(pixId);
+                if (pix == null)
+                    return ErrorResponse(BankSlipNotFound);
+
+                AssignedFor(request.AssignedId, user, model, pix.Name, model.Type.GetEnumDescription());
+
+                model.PaymentDetails = new PaymentDetailsModel(pix.PixId, pix.Name);
+
+                if (model.Installment)
+                {
+                    model.Repetition = new RepetitionModel(request.Repetition.QuantityInstallment, request.Repetition.CurrentInstallment, request.Repetition.ValueInstallment);
+
+                    var transactions = new List<TransactionsModel>();
+                    var transactionsRepetition = _addRepetition.AddRepetitionCardDebitAndPix(request.Repetition.QuantityInstallment, request.Repetition.CurrentInstallment, model);
+                    transactions.AddRange(transactionsRepetition);
+
+                    await _repository.InsertManyAsync(transactions);
+                }
+                else
+                {
+                    model.Value = request.Value;
+                    await _repository.InsertOneAsync(model);
+                }
+
+                return SuccessResponse(Transaction, Message.SUCCESSFULLY_ADDED_F.GetEnumDescription());
             }
             catch (Exception ex)
             {
@@ -266,8 +286,7 @@ namespace FinanceControl.Application.Services.Transactions.Service
                 if (paymentId == Guid.Empty)
                     return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-                using var repository = new TransactionsRepository(_appSettings.GetMongoDb(), _logger);
-                var list = await repository.GetAllByPaymentId(paymentId, assignedId, search, type, year, month, take, skip);
+                var list = await _repository.GetAllByPaymentId(paymentId, assignedId, search, type, year, month, take, skip);
                 if (list == null)
                     return SuccessResponse(new PaginatedResponse<TransactionsListResponse> { Records = new List<TransactionsListResponse>() });
 
@@ -278,16 +297,18 @@ namespace FinanceControl.Application.Services.Transactions.Service
                     Name = t.Name,
                     Assigned = t.Assigned.Name,
                     Value = t.Installment ? t.Repetition.ValueInstallment : t.Value.Value,
-                    Installment = CurrentInstallment(t.Installment, t.ExpirationDate, t.Repetition.CurrentInstallment, t.Repetition.NumberInstallments),
+                    Installment = t.Installment ? $"{t.Repetition.CurrentInstallment}/{t.Repetition.NumberInstallments}" : "1/1",
                     CashFlow = t.CashFlow.GetEnumDescription(),
                     ExpenseType = t.ExpenseType.GetEnumDescription(),
                     Type = t.Type.GetEnumDescription(),
-                    DatePurchase = $"{t.DatePurchase:dd} {t.DatePurchase:MMMM} {t.DatePurchase:yy}"
+                    DatePurchase = $"{t.DatePurchase:dd} {t.DatePurchase:MMMM} {t.DatePurchase:yy}",
+                    ExpirationDate = $"{t.ExpirationDate:dd} {t.ExpirationDate:MMMM} {t.ExpirationDate:yy}",
+                    YearMonthReference = t.YearMonthReference
                 });
 
                 var result = new PaginatedResponse<TransactionsListResponse>
                 {
-                    Records = record.ToList(),
+                    Records = [.. record],
                     Total = list.Total
                 };
 
@@ -308,11 +329,10 @@ namespace FinanceControl.Application.Services.Transactions.Service
         {
             try
             {
-                if (transactionId == Guid.Empty)
+                if (transactionId == Guid.Empty || year == 0 || month == 0)
                     return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-                using var repository = new TransactionsRepository(_appSettings.GetMongoDb(), _logger);
-                var record = await repository.GetByIdAndDate(transactionId, year, month);
+                var record = await _repository.GetByIdAndDate(transactionId, year, month);
                 if (record == null)
                     return ErrorResponse(TransactionNotFound);
 
@@ -350,137 +370,47 @@ namespace FinanceControl.Application.Services.Transactions.Service
         {
             try
             {
-                if (transactionId == Guid.Empty || request == null)
+                if (transactionId == Guid.Empty || request == null || GetCurrentUserId() == Guid.Empty)
                     return ErrorResponse(Message.INVALID_OBJECT.ToString());
 
-                using var repository = new TransactionsRepository(_appSettings.GetMongoDb(), _logger);
-                var transaction = await repository.GetByIdAndDate(transactionId, year, month);
-                if (transaction == null)
-                    return ErrorResponse(TransactionNotFound);
-
-                using var useRepository = new UserRepository(_appSettings.GetMongoDb(), _logger);
-                var user = await useRepository.GetById(GetCurrentUserId());
+                var user = await _userRepository.GetById(GetCurrentUserId());
                 if (user == null)
-                    return ErrorResponse(UserNotFound);
+                    return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
 
-                transaction.Update(request.Name, request.DatePurchase, request.Installment, Enum.Parse<TransactionsCashFlow>(request.CashFlow), Enum.Parse<ExpenseType>(request.ExpenseType));
-                switch (transaction.Type)
+                if (request.Installment && request.UpdateAll)
                 {
-                    case TransactionsType.CREDIT_CARD:
-                        {
-                            using var cardRepository = new CardRepository(_appSettings.GetMongoDb(), _logger);
-                            var card = await cardRepository.GetById(request.Id, request.WalletId);
-                            if (card == null)
-                                return ErrorResponse(CardNotFound);
+                    var transactions = await _repository.GetTransactionsById(transactionId);
+                    if (transactions.Count == 0)
+                        return ErrorResponse(TransactionsNotFound);
 
-                            if (request.AssignedId == Guid.Empty)
-                                transaction.Assigned.Update(user.UserId, "@Eu", user.Email);
-                            else
-                            {
-                                var familyMember = user.FamilyMembers?.FirstOrDefault(fm => fm.UserId.Equals(request.AssignedId));
-                                if (familyMember == null)
-                                    return ErrorResponse(FamilyMemberNotFound);
+                    transactions = await UpdateAll(transactions, request);
 
-                                SignedBy(user, familyMember, transaction, card, true);
-                            }
+                    foreach (var transaction in transactions)
+                        await _repository.Update(transactionId, transaction);
+                }
+                else
+                {
+                    var transaction = await _repository.GetByIdAndDate(transactionId, year, month);
+                    if (transaction == null)
+                        return ErrorResponse(TransactionNotFound);
 
-                            if (request.Installment)
-                            {
-                                var repetition = request.Repetition;
-                                transaction.Repetition.Update(repetition.QuantityInstallment, repetition.CurrentInstallment, repetition.ValueInstallment);
-                            }
-                            else
-                                transaction.Value = request.Value;
-                        }
-                        break;
+                    transaction.Update(request.Name, request.DatePurchase, request.Installment, Enum.Parse<TransactionsCashFlow>(request.CashFlow), Enum.Parse<ExpenseType>(request.ExpenseType));
 
-                    case TransactionsType.DEBIT_CARD:
-                        {
-                            using var cardRepository = new CardRepository(_appSettings.GetMongoDb(), _logger);
-                            var card = await cardRepository.GetById(request.Id, request.WalletId);
-                            if (card == null)
-                                return ErrorResponse(DebitNotFound);
+                    if (request.AssignedId != Guid.Empty && request.AssignedId != transaction.Assigned.AssignedId)
+                        AssignedForUpdate(request.AssignedId, user, transaction);
 
-                            if (request.AssignedId == Guid.Empty)
-                                transaction.Assigned.Update(user.UserId, "@Eu", user.Email);
-                            else
-                            {
-                                var familyMember = user.FamilyMembers?.FirstOrDefault(fm => fm.UserId.Equals(request.AssignedId));
-                                if (familyMember == null)
-                                    return ErrorResponse(FamilyMemberNotFound);
+                    if (transaction.Installment)
+                    {
+                        var repetition = request.Repetition;
+                        transaction.Repetition.Update(repetition.QuantityInstallment, repetition.CurrentInstallment, repetition.ValueInstallment);
+                    }
+                    else
+                        transaction.Value = request.Value;
 
-                                SignedBy(user, familyMember, transaction, card, true);
-                            }
-
-                            if (request.Installment)
-                            {
-                                var repetition = request.Repetition;
-                                transaction.Repetition.Update(repetition.QuantityInstallment, repetition.CurrentInstallment, repetition.ValueInstallment);
-                            }
-                            else
-                                transaction.Value = request.Value;
-                        }
-                        break;
-
-                    case TransactionsType.BANK_SLIP:
-                        {
-                            using var bankSlipRepository = new BankSlipRepository(_appSettings.GetMongoDb(), _logger);
-                            var bankSlip = await bankSlipRepository.GetById(request.Id, request.WalletId);
-                            if (bankSlip == null)
-                                return ErrorResponse(BankSlipNotFound);
-
-                            if (request.AssignedId == Guid.Empty)
-                                transaction.Assigned.Update(user.UserId, "@Eu", user.Email);
-                            else
-                            {
-                                var familyMember = user.FamilyMembers?.FirstOrDefault(fm => fm.UserId.Equals(request.AssignedId));
-                                if (familyMember == null)
-                                    return ErrorResponse(FamilyMemberNotFound);
-
-                                SignedBy(user, familyMember, transaction, bankSlip, false);
-                            }
-
-                            if (request.Installment)
-                            {
-                                var repetition = request.Repetition;
-                                transaction.Repetition.Update(repetition.QuantityInstallment, repetition.CurrentInstallment, repetition.ValueInstallment);
-                            }
-                            else
-                                transaction.Value = request.Value;
-                        }
-                        break;
-
-                    case TransactionsType.PIX:
-                        {
-                            using var pixRepository = new PixRepository(_appSettings.GetMongoDb(), _logger);
-                            var pix = await pixRepository.GetById(request.Id, request.WalletId);
-                            if (pix == null)
-                                return ErrorResponse(PixNotFound);
-
-                            if (request.AssignedId == Guid.Empty)
-                                transaction.Assigned.Update(user.UserId, "@Eu", user.Email);
-                            else
-                            {
-                                var familyMember = user.FamilyMembers?.FirstOrDefault(fm => fm.UserId.Equals(request.AssignedId));
-                                if (familyMember == null)
-                                    return ErrorResponse(FamilyMemberNotFound);
-
-                                SignedBy(user, familyMember, transaction, pix, false);
-                            }
-
-                            if (request.Installment)
-                            {
-                                var repetition = request.Repetition;
-                                transaction.Repetition.Update(repetition.QuantityInstallment, repetition.CurrentInstallment, repetition.ValueInstallment);
-                            }
-                            else
-                                transaction.Value = request.Value;
-                        }
-                        break;
-
+                    await _repository.Update(transactionId, transaction);
                 }
 
-                return SuccessResponse(Transaction, Message.SUCCESSFULLY_ADDED.GetEnumDescription());
+                return SuccessResponse(Transaction, Message.SUCCESSFULLY_UPDATED_F.GetEnumDescription());
             }
             catch (Exception ex) { return ErrorResponse(ex); }
         }
@@ -490,17 +420,60 @@ namespace FinanceControl.Application.Services.Transactions.Service
         /// </summary>
         /// <param name="transactionId"></param>
         /// <returns></returns>
-        public async Task<ResultValue> Delete(Guid transactionId, int year, int month)
+        public async Task<ResultValue> Delete(Guid transactionId, int year, int month, bool deleteAll)
+        {
+            try
+            {
+                if (deleteAll)
+                {
+                    await _repository.DeleteTransactions(transactionId);
+                }
+                else
+                {
+                    if (transactionId == Guid.Empty || year == 0 || month == 0)
+                        return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
+
+                    await _repository.Delete(transactionId, year, month);
+                }
+
+                return SuccessResponse(Transaction, Message.SUCCESSFULLY_DELETED_F.GetEnumDescription());
+            }
+            catch (Exception ex)
+            {
+                return ErrorResponse(ex);
+            }
+        }
+
+        /// <summary>
+        /// Serviço para Mover a Transação 
+        /// </summary>
+        /// <param name="transactionId"></param>
+        /// <param name="year"></param>
+        /// <param name="month"></param>
+        /// <param name="next"></param>
+        /// <returns></returns>
+        public async Task<ResultValue> MoveTransaction(Guid transactionId, bool next)
         {
             try
             {
                 if (transactionId == Guid.Empty)
                     return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-                using var repository = new TransactionsRepository(_appSettings.GetMongoDb(), _logger);
-                await repository.Delete(transactionId, year, month);
+                var transactions = await _repository.GetTransactionsById(transactionId);
+                if (transactions.Count == 0)
+                    return ErrorResponse(TransactionsNotFound);
 
-                return SuccessResponse(Transaction, Message.SUCCESSFULLY_DELETED.GetEnumDescription());
+                var addMonths = next ? 1 : -1;
+                foreach (var transaction in transactions)
+                {
+                    var yearMonthReference = transaction.YearMonthReference;
+                    transaction.ExpirationDate = transaction.ExpirationDate.AddMonths(addMonths);
+                    transaction.YearMonthReference = transaction.ExpirationDate.ToString("yyyy/MM");
+
+                    await _repository.UpdateMove(transactionId, yearMonthReference, transaction);
+                }
+
+                return SuccessResponse(Transaction, Message.SUCCESSFULLY_UPDATED_F.GetEnumDescription());
             }
             catch (Exception ex)
             {
@@ -585,12 +558,11 @@ namespace FinanceControl.Application.Services.Transactions.Service
         {
             try
             {
-                using var repository = new TransactionsRepository(_appSettings.GetMongoDb(), _logger);
-                var list = await repository.ListAssignedTransactions(GetCurrentUserId(), search, take, skip);
+                var list = await _repository.ListAssignedTransactions(GetCurrentUserId(), search, take, skip);
                 if (list == null)
                     return SuccessResponse(new PaginatedResponse<TransactionsAssignedToMeResponse> { Records = new List<TransactionsAssignedToMeResponse>() });
 
-                using var useRepository = new UserRepository(logger: _logger, mongoDb: _appSettings.GetMongoDb());
+                using var useRepository = new UserRepository(_appSettings.GetMongoDb(), _appSettings);
                 var record = list.Records.Select(t => new TransactionsAssignedToMeResponse
                 {
                     Marked = useRepository.GetNameById(t.CreatedBy.Value).Result,
@@ -630,20 +602,17 @@ namespace FinanceControl.Application.Services.Transactions.Service
                     return ErrorResponse(Message.INVALID_OBJECT.ToString());
 
                 var userId = GetCurrentUserId();
-                using var useRepository = new UserRepository(_appSettings.GetMongoDb(), _logger);
-                var user = await useRepository.GetById(userId);
+                var user = await _userRepository.GetById(userId);
                 if (user == null)
-                    return ErrorResponse(UserNotFound);
+                    return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
 
-                using var repository = new TransactionsRepository(_appSettings.GetMongoDb(), _logger);
-                var transaction = await repository.GetById(request.TransactionId);
+                var transaction = await _repository.GetById(request.TransactionId);
                 if (transaction == null)
                     return ErrorResponse(TransactionNotFound);
 
                 if (request.Approved)
                 {
-                    using var cardRepository = new CardRepository(_appSettings.GetMongoDb(), _logger);
-                    var card = await cardRepository.GetById(request.CardId, request.WalletId);
+                    var card = await _cardRepository.GetById(request.CardId);
                     if (card == null)
                         return ErrorResponse(CardNotFound);
 
@@ -656,15 +625,15 @@ namespace FinanceControl.Application.Services.Transactions.Service
                 else
                 {
                     //enviar notificação
-                    var userCreated = await useRepository.GetDataPartialById(transaction.CreatedBy.Value);
+                    var userCreated = await _userRepository.GetDataPartialById(transaction.CreatedBy.Value);
 
-                    var transactions = await repository.GetTransactionsById(request.TransactionId);
+                    var transactions = await _repository.GetTransactionsById(request.TransactionId);
                     if (transactions.Any())
                         transaction.Assigned = new AssignedModel(userCreated.UserId, "@Eu", userCreated.Email);
                 }
-                await repository.UpdateAllAssigned(request.TransactionId, transaction.Assigned);
+                await _repository.UpdateAllAssigned(request.TransactionId, transaction.Assigned);
 
-                return SuccessResponse(Transaction, Message.EVALUATE_TRANSACTION.GetEnumDescription());
+                return SuccessResponse(TransactionEvaluated);
             }
             catch (Exception ex)
             {
@@ -678,19 +647,39 @@ namespace FinanceControl.Application.Services.Transactions.Service
 
         #region [ Private Methods ]
 
-        private void SignedBy<T>(UserModel user, FamilyMemberModel familyMember, TransactionsModel model, T typePayment, bool isCard)
+        private void AssignedFor(Guid assignedId, UserModel user, TransactionsModel model, string namePayment, string typePayment)
         {
-            var type = string.Empty;
-            var nameProperty = typeof(T).GetProperty("Name");
-            var name = nameProperty?.GetValue(typePayment)?.ToString();
-
-            if (isCard)
+            if (assignedId == Guid.Empty)
+                model.Assigned = new AssignedModel(user.UserId, "@Eu", user.Email);
+            else
             {
-                var typeProperty = typeof(T).GetProperty("Type");
-                var cardType = (CardType)typeProperty?.GetValue(typePayment);
-                type = cardType.GetEnumDescription();
+                var familyMember = user.FamilyMembers?.FirstOrDefault(fm => fm.UserId.Equals(assignedId));
+                if (familyMember != null)
+                    SignedBy(user, familyMember, model, namePayment, typePayment);
             }
+        }
 
+        private void AssignedForUpdate(Guid assignedId, UserModel user, TransactionsModel model)
+        {
+            if (assignedId == user.UserId)
+                model.Assigned.Update(user.UserId, "@Eu", user.Email);
+            else
+            {
+                var familyMember = user.FamilyMembers?.FirstOrDefault(fm => fm.UserId.Equals(assignedId));
+                if (familyMember != null)
+                {
+                    if (familyMember.UserId != Guid.Empty)
+                        model.Assigned = new AssignedModel(familyMember.UserId, familyMember.Name, familyMember.Email);
+                    else
+                    {
+                        model.Assigned = new AssignedModel(familyMember.FamilyId, familyMember.Name, familyMember.Email);
+                    }
+                }
+            }
+        }
+
+        private void SignedBy(UserModel user, FamilyMemberModel familyMember, TransactionsModel model, string namePayment, string typePayment)
+        {
             if (familyMember.UserId != Guid.Empty)
                 model.Assigned = new AssignedModel(familyMember.UserId, familyMember.Name, familyMember.Email);
             else
@@ -698,21 +687,81 @@ namespace FinanceControl.Application.Services.Transactions.Service
                 model.Assigned = new AssignedModel(familyMember.FamilyId, familyMember.Name, familyMember.Email);
                 try
                 {
-                    var template = _email.TemplateTransactionNotification(user.Name, model.Name, model.Repetition.ValueInstallment, name, type);
+                    var template = _email.TemplateTransactionNotification(user.Name, model.Name, model.Repetition.ValueInstallment, namePayment, typePayment);
                     var emailSend = _email.Send(familyMember.Email, SubjectEmail, template);
                 }
                 catch (Exception) { }
             }
         }
 
-        private string CurrentInstallment(bool installment, DateTime expirationDate, int currentInstallment, int numberInstallments)
+        private async Task<List<TransactionsModel>> UpdateAll(List<TransactionsModel> transactions, TransactionsUpdateRequest request)
         {
-            var result = "1/1";
-            if (!installment)
-                return result;
+            var repetition = request.Repetition;
+            var quantityInstallment = transactions.FirstOrDefault().Repetition.NumberInstallments;
 
-            result = expirationDate > DateTime.Today ? $"{currentInstallment}/{numberInstallments}" : $"{currentInstallment + 1}/{numberInstallments}";
-            return result;
+            transactions.ForEach(transaction =>
+            {
+                transaction.Update(
+                    request.Name,
+                    request.DatePurchase,
+                    request.Installment,
+                    Enum.Parse<TransactionsCashFlow>(request.CashFlow),
+                    Enum.Parse<ExpenseType>(request.ExpenseType)
+                );
+
+                transaction.Repetition.Update(repetition.QuantityInstallment, repetition.CurrentInstallment++, repetition.ValueInstallment);
+            });
+
+            if (request.Repetition.QuantityInstallment != quantityInstallment)
+            {
+                var quantityInstallmentUpdate = request.Repetition.QuantityInstallment - quantityInstallment;
+                if (quantityInstallmentUpdate < 0)
+                {
+                    quantityInstallmentUpdate = Math.Abs(quantityInstallmentUpdate);
+                    while (quantityInstallmentUpdate > 0)
+                    {
+                        var lastTransaction = transactions.LastOrDefault();
+                        transactions.Remove(lastTransaction);
+
+                        await _repository.Delete(lastTransaction.TransactionId, lastTransaction.ExpirationDate.Year, lastTransaction.ExpirationDate.Month);
+                        quantityInstallmentUpdate--;
+                    }
+                }
+                else
+                {
+                    var iteration = 1;
+                    var lastTransaction = transactions.LastOrDefault();
+                    var currentInstallment = lastTransaction.Repetition.CurrentInstallment;
+                    while (currentInstallment < request.Repetition.QuantityInstallment)
+                    {
+                        currentInstallment++;
+                        var newTransaction = new TransactionsModel
+                        {
+                            TransactionId = lastTransaction.TransactionId,
+                            Name = lastTransaction.Name,
+                            Active = true,
+                            CashFlow = lastTransaction.CashFlow,
+                            CreatedBy = lastTransaction.CreatedBy,
+                            CreationDate = lastTransaction.CreationDate,
+                            DatePurchase = lastTransaction.DatePurchase,
+                            ExpenseType = lastTransaction.ExpenseType,
+                            Installment = lastTransaction.Installment,
+                            PaymentDetails = lastTransaction.PaymentDetails,
+                            Assigned = lastTransaction.Assigned,
+                            Type = lastTransaction.Type,
+                            Value = lastTransaction.Value,
+                            ExpirationDate = lastTransaction.ExpirationDate.AddMonths(iteration),
+                            YearMonthReference = lastTransaction.ExpirationDate.AddMonths(iteration).ToString("yyyy/MM"),
+                            Repetition = lastTransaction.Installment ? new RepetitionModel(lastTransaction.Repetition.NumberInstallments, currentInstallment, lastTransaction.Repetition.ValueInstallment) : null
+                        };
+
+                        await _repository.InsertOneAsync(newTransaction);
+                        iteration++;
+                    }
+                }
+            }
+
+            return transactions;
         }
 
         #endregion

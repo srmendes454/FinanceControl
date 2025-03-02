@@ -1,25 +1,33 @@
-﻿using FinanceControl.Application.Extensions.BaseService;
-using FinanceControl.Application.Extensions.Enum;
+﻿using FinanceControl.Application.Extensions.Paginated;
 using FinanceControl.Application.Services.BankSlip.DTO_s.Request;
 using FinanceControl.Application.Services.BankSlip.DTO_s.Response;
-using FinanceControl.Application.Services.BankSlip.Model;
 using FinanceControl.Application.Services.BankSlip.Repository;
 using FinanceControl.Application.Services.Wallet.Repository;
-using FinanceControl.Extensions.AppSettings;
-using FinanceControl.Extensions.Paginated;
-using Serilog;
+using FinanceControl.Domain.Entities;
+using FinanceControl.Domain.Enuns;
+using FinanceControl.Infra.AppSettings;
+using FinanceControl.Infra.BaseService;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace FinanceControl.Application.Services.BankSlip.Service
 {
-    public class BankSlipService : BaseService
+    public class BankSlipService : BaseService<BankSlipService>, IBankSlipService
     {
+        #region [ Fields ]
+
+        private readonly IBankSlipRepository _repository;
+        private readonly IWalletRepository _walletRepository;
+
+        #endregion
+
         #region [ Constructor ]
 
-        public BankSlipService(IAppSettings appSettings, ILogger logger, Guid currentUserId) : base(appSettings, logger, currentUserId)
+        public BankSlipService(IAppSettings appSettings, IBankSlipRepository repository, IWalletRepository walletRepository) : base(appSettings)
         {
+            _repository = repository;
+            _walletRepository = walletRepository;
         }
 
         #endregion
@@ -47,16 +55,15 @@ namespace FinanceControl.Application.Services.BankSlip.Service
                 if (request.WalletId == Guid.Empty || userId == Guid.Empty || request == null)
                     return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-                using var walletRepository = new WalletRepository(_appSettings.GetMongoDb(), _logger);
-                var wallet = await walletRepository.GetById(request.WalletId, userId);
+                var wallet = await _walletRepository.GetById(request.WalletId, userId);
                 if (wallet == null)
                     return ErrorResponse(WalletNotFound);
 
                 var model = new BankSlipModel(userId, request.Name, request.ExpirationDay, new BankSlipWalletModel(wallet.WalletId, wallet.Name));
 
-                await new BankSlipRepository(_appSettings.GetMongoDb(), _logger).InsertOneAsync(model);
+                await _repository.InsertOneAsync(model);
 
-                return SuccessResponse(BankSlip, Message.SUCCESSFULLY_ADDED.GetEnumDescription());
+                return SuccessResponse(BankSlip, Message.SUCCESSFULLY_ADDED_M.GetEnumDescription());
             }
             catch (Exception ex)
             {
@@ -67,20 +74,17 @@ namespace FinanceControl.Application.Services.BankSlip.Service
         /// <summary>
         /// Serviço para Obter um Boleto
         /// </summary>
-        /// <param name="walletId"></param>
         /// <param name="bankSlipId"></param>
         /// <returns></returns>
-        public async Task<ResultValue> GetById(Guid walletId, Guid bankSlipId)
+        public async Task<ResultValue> GetById(Guid bankSlipId)
         {
             try
             {
                 var userId = GetCurrentUserId();
-                if (bankSlipId == Guid.Empty || userId == Guid.Empty || walletId == Guid.Empty)
+                if (bankSlipId == Guid.Empty || userId == Guid.Empty)
                     return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-                using var repository = new BankSlipRepository(_appSettings.GetMongoDb(), _logger);
-
-                var record = await repository.GetById(bankSlipId, walletId);
+                var record = await _repository.GetById(bankSlipId);
                 if (record == null)
                     return ErrorResponse(BankSlipNotFound);
 
@@ -109,9 +113,7 @@ namespace FinanceControl.Application.Services.BankSlip.Service
                 if (walletId == Guid.Empty)
                     return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-                using var repository = new BankSlipRepository(_appSettings.GetMongoDb(), _logger);
-
-                var list = await repository.GetAll(walletId, search, take, skip);
+                var list = await _repository.GetAll(walletId, search, take, skip);
                 if (list == null)
                     return SuccessResponse(new PaginatedResponse<BankSlipResponse> { Records = new List<BankSlipResponse>() });
 
@@ -140,18 +142,17 @@ namespace FinanceControl.Application.Services.BankSlip.Service
         {
             try
             {
-                if (request == null || bankSlipId == Guid.Empty || request.WalletId == Guid.Empty)
+                if (request == null || bankSlipId == Guid.Empty)
                     return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-                using var repository = new BankSlipRepository(_appSettings.GetMongoDb(), _logger);
-                var model = await repository.GetById(bankSlipId, request.WalletId);
+                var model = await _repository.GetById(bankSlipId);
                 if (model == null)
                     return ErrorResponse(BankSlipNotFound);
 
                 model.Update(request.Name, request.ExpirationDay);
-                repository.Update(request.WalletId, model);
+                await _repository.Update(model);
 
-                return SuccessResponse(BankSlip, Message.SUCCESSFULLY_UPDATED.GetEnumDescription());
+                return SuccessResponse(BankSlip, Message.SUCCESSFULLY_UPDATED_M.GetEnumDescription());
             }
             catch (Exception ex)
             {
@@ -162,19 +163,18 @@ namespace FinanceControl.Application.Services.BankSlip.Service
         /// <summary>
         /// Serviço para Excluir um Boleto
         /// </summary>
-        /// <param name="walletId"></param>
         /// <param name="bankSlipId"></param>
         /// <returns></returns>
-        public async Task<ResultValue> Delete(Guid bankSlipId, Guid walletId)
+        public async Task<ResultValue> Delete(Guid bankSlipId)
         {
             try
             {
-                if (bankSlipId == Guid.Empty || walletId == Guid.Empty)
+                if (bankSlipId == Guid.Empty)
                     return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-                new BankSlipRepository(_appSettings.GetMongoDb(), _logger).Delete(walletId, bankSlipId);
+                await _repository.Delete(bankSlipId);
 
-                return SuccessResponse(BankSlip, Message.SUCCESSFULLY_DELETED.GetEnumDescription());
+                return SuccessResponse(BankSlip, Message.SUCCESSFULLY_DELETED_M.GetEnumDescription());
             }
             catch (Exception ex)
             {

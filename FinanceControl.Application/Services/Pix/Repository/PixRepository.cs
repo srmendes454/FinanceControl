@@ -1,7 +1,8 @@
-﻿using FinanceControl.Application.Services.Pix.Model;
-using FinanceControl.Extensions.BaseRepository;
-using FinanceControl.Extensions.Paginated;
-using FinanceControl.WebApi.Extensions.Context;
+﻿using FinanceControl.Application.Extensions.Paginated;
+using FinanceControl.Domain.Entities;
+using FinanceControl.Infra.AppSettings;
+using FinanceControl.Infra.BaseRepository;
+using FinanceControl.Infra.Context;
 using MongoDB.Driver;
 using Serilog;
 using System;
@@ -11,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace FinanceControl.Application.Services.Pix.Repository
 {
-    public class PixRepository : BaseRepository<PixModel>
+    public class PixRepository : BaseRepository<PixModel>, IPixRepository
     {
         #region [ Fields ]
 
@@ -21,7 +22,7 @@ namespace FinanceControl.Application.Services.Pix.Repository
 
         #region [ Constructor ]
 
-        public PixRepository(IContextMongoDBDatabase mongoDb, ILogger logger) : base(mongoDb, logger, "Pix")
+        public PixRepository(IContextMongoDBDatabase mongoDb, IAppSettings appSettings) : base(mongoDb, appSettings, "Pix")
         {
         }
 
@@ -35,11 +36,10 @@ namespace FinanceControl.Application.Services.Pix.Repository
         /// <param name="pixId"></param>
         /// <param name="walletId"></param>
         /// <returns></returns>
-        public async Task<PixModel> GetById(Guid pixId, Guid walletId)
+        public async Task<PixModel> GetById(Guid pixId)
         {
             var filter = Builders<PixModel>.Filter
                 .Where(p => p.PixId.Equals(pixId)
-                            && p.Wallet.WalletId.Equals(walletId)
                             && p.Active.Equals(true));
 
             var sort = Builders<PixModel>.Sort
@@ -54,7 +54,6 @@ namespace FinanceControl.Application.Services.Pix.Repository
                     PixId = p.PixId,
                     Name = p.Name,
                     LinkedAccount = p.LinkedAccount,
-                    ExpirationDay = p.ExpirationDay,
                     Type = p.Type,
                     Color = p.Color,
                     Active = p.Active
@@ -99,7 +98,6 @@ namespace FinanceControl.Application.Services.Pix.Repository
                 {
                     PixId = p.PixId,
                     Name = p.Name,
-                    ExpirationDay = p.ExpirationDay,
                     LinkedAccount = p.LinkedAccount,
                     Type = p.Type,
                     Color = p.Color,
@@ -120,14 +118,12 @@ namespace FinanceControl.Application.Services.Pix.Repository
         /// <summary>
         /// Atualiza os dados de um Pix
         /// </summary>
-        /// <param name="walletId"></param>
         /// <param name="model"></param>
         /// <returns></returns>
-        public async void Update(Guid walletId, PixModel model)
+        public async Task Update(PixModel model)
         {
             var filter = Builders<PixModel>.Filter
-                .Where(p => p.Wallet.WalletId.Equals(walletId)
-                            && p.PixId.Equals(model.PixId)
+                .Where(p => p.PixId.Equals(model.PixId)
                             && p.Active.Equals(true));
 
             var update = Builders<PixModel>.Update
@@ -135,7 +131,6 @@ namespace FinanceControl.Application.Services.Pix.Repository
                 .Set(p => p.Color, model.Color)
                 .Set(p => p.Type, model.Type)
                 .Set(p => p.LinkedAccount, model.LinkedAccount)
-                .Set(p => p.ExpirationDay, model.ExpirationDay)
                 .Set(p => p.UpdateDate, DateTime.UtcNow);
 
             await UpdateOneAsync(update, filter);
@@ -145,13 +140,11 @@ namespace FinanceControl.Application.Services.Pix.Repository
         /// Exclui um Pix
         /// </summary>
         /// <param name="pixId"></param>
-        /// <param name="walletId"></param>
         /// <returns></returns>
-        public async void Delete(Guid walletId, Guid pixId)
+        public async Task Delete(Guid pixId)
         {
             var filter = Builders<PixModel>.Filter
-                .Where(p => p.PixId.Equals(pixId)
-                            && p.Wallet.WalletId.Equals(walletId));
+                .Where(p => p.PixId.Equals(pixId));
 
             await DeleteOneAsync(filter);
         }

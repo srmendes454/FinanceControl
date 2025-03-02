@@ -1,18 +1,18 @@
-﻿using FinanceControl.Application.Services.BankSlip.Model;
-using FinanceControl.Application.Services.Cards.Model;
-using FinanceControl.Extensions.BaseRepository;
-using FinanceControl.WebApi.Extensions.Context;
+﻿using FinanceControl.Application.Extensions.Paginated;
+using FinanceControl.Domain.Entities;
+using FinanceControl.Infra.AppSettings;
+using FinanceControl.Infra.BaseRepository;
+using FinanceControl.Infra.Context;
 using MongoDB.Driver;
 using Serilog;
-using System.Threading.Tasks;
 using System;
 using System.Collections.Generic;
-using FinanceControl.Extensions.Paginated;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace FinanceControl.Application.Services.BankSlip.Repository
 {
-    public class BankSlipRepository : BaseRepository<BankSlipModel>
+    public class BankSlipRepository : BaseRepository<BankSlipModel>, IBankSlipRepository
     {
         #region [ Fields ]
 
@@ -22,7 +22,7 @@ namespace FinanceControl.Application.Services.BankSlip.Repository
 
         #region [ Constructor ]
 
-        public BankSlipRepository(IContextMongoDBDatabase mongoDb, ILogger logger) : base(mongoDb, logger, "BankSlip")
+        public BankSlipRepository(IContextMongoDBDatabase mongoDb, IAppSettings appSettings) : base(mongoDb, appSettings, "BankSlip")
         {
         }
 
@@ -36,11 +36,10 @@ namespace FinanceControl.Application.Services.BankSlip.Repository
         /// <param name="bankSlipId"></param>
         /// <param name="walletId"></param>
         /// <returns></returns>
-        public async Task<BankSlipModel> GetById(Guid bankSlipId, Guid walletId)
+        public async Task<BankSlipModel> GetById(Guid bankSlipId)
         {
             var filter = Builders<BankSlipModel>.Filter
                 .Where(p => p.BankSlipId.Equals(bankSlipId)
-                            && p.Wallet.WalletId.Equals(walletId)
                             && p.Active.Equals(true));
 
             var sort = Builders<BankSlipModel>.Sort
@@ -115,14 +114,12 @@ namespace FinanceControl.Application.Services.BankSlip.Repository
         /// <summary>
         /// Atualiza os dados de um Boleto
         /// </summary>
-        /// <param name="walletId"></param>
         /// <param name="model"></param>
         /// <returns></returns>
-        public async void Update(Guid walletId, BankSlipModel model)
+        public async Task Update(BankSlipModel model)
         {
             var filter = Builders<BankSlipModel>.Filter
-                .Where(bs => bs.Wallet.WalletId.Equals(walletId)
-                            && bs.BankSlipId.Equals(model.BankSlipId)
+                .Where(bs => bs.BankSlipId.Equals(model.BankSlipId)
                             && bs.Active.Equals(true));
 
             var update = Builders<BankSlipModel>.Update
@@ -136,14 +133,12 @@ namespace FinanceControl.Application.Services.BankSlip.Repository
         /// <summary>
         /// Exclui um Boleto
         /// </summary>
-        /// <param name="walletId"></param>
         /// <param name="bankSlipId"></param>
         /// <returns></returns>
-        public async void Delete(Guid walletId, Guid bankSlipId)
+        public async Task Delete(Guid bankSlipId)
         {
             var filter = Builders<BankSlipModel>.Filter
-                .Where(bs => bs.BankSlipId.Equals(bankSlipId)
-                            && bs.Wallet.WalletId.Equals(walletId));
+                .Where(bs => bs.BankSlipId.Equals(bankSlipId));
 
             await DeleteOneAsync(filter);
         }

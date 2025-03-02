@@ -1,4 +1,5 @@
 ﻿using FinanceControl.Application.AutoMapper;
+using FinanceControl.Application.DependencyInjection;
 using FinanceControl.Application.Startup;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -12,12 +13,14 @@ public class Startup : BaseStartup
     public Startup(IConfiguration configuration, IWebHostEnvironment env) : base(env: env, configuration: configuration,
         apiName: "finance-control")
     {
-
     }
 
     public void ConfigureServices(IServiceCollection services)
     {
         services.FinanceControlAutoMapperConfiguration();
+        services.ConfigureRepositoriesDependencyInjection();
+        services.ConfigureServicesDependencyInjection();
+
         BaseConfigureServices(services: services);
     }
 

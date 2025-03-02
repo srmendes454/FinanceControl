@@ -1,9 +1,7 @@
-﻿using FinanceControl.Application.Extensions.ControllerBase;
-using FinanceControl.Application.Extensions.RequestContainer;
-using FinanceControl.Application.Services.Cards.Service;
-using FinanceControl.Application.Services.Pix.DTO_s.Request;
+﻿using FinanceControl.Application.Services.Pix.DTO_s.Request;
 using FinanceControl.Application.Services.Pix.Service;
-using FinanceControl.Extensions.AppSettings;
+using FinanceControl.Infra.AppSettings;
+using FinanceControl.Infra.ControllerBase;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -11,20 +9,19 @@ using System.Threading.Tasks;
 
 namespace FinanceControl.Controller
 {
-    public class PixController : BaseController
+    public class PixController : BaseController<PixController>
     {
         #region [ Fields ]
 
-        private readonly IRequestContainer _request;
+        private readonly IPixService _service;
 
         #endregion
 
         #region [ Constructor ]
 
-        public PixController(IAppSettings appSettings, IRequestContainer request) : base(appSettings)
+        public PixController(IAppSettings appSettings, IPixService service) : base(appSettings)
         {
-            _logger = appSettings.GetLogger().ForContext<PixController>();
-            _request = request;
+            _service = service;
         }
 
         #endregion
@@ -40,8 +37,7 @@ namespace FinanceControl.Controller
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> InsertCard([FromBody] PixInsertRequest request)
         {
-            using var service = new PixService(_appSettings, _logger, _request.UserId);
-            return Ok(await service.Insert(request));
+            return Ok(await _service.Insert(request));
         }
 
         /// <summary>
@@ -50,12 +46,11 @@ namespace FinanceControl.Controller
         /// <param name="pixId"></param>
         /// <param name="walletId"></param>
         /// <returns></returns>
-        [HttpGet("/v1/pix/{pixId}/wallet/{walletId}")]
+        [HttpGet("/v1/pix/{pixId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetById([FromRoute] Guid pixId, [FromRoute] Guid walletId)
+        public async Task<IActionResult> GetById([FromRoute] Guid pixId)
         {
-            using var service = new PixService(_appSettings, _logger, _request.UserId);
-            return Ok(await service.GetById(walletId, pixId));
+            return Ok(await _service.GetById(pixId));
         }
 
         /// <summary>
@@ -70,8 +65,7 @@ namespace FinanceControl.Controller
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAll([FromRoute] Guid walletId, [FromQuery] string search = null, [FromQuery] int take = 20, [FromQuery] int skip = 1)
         {
-            using var service = new PixService(_appSettings, _logger, _request.UserId);
-            return Ok(await service.GetAll(walletId, search, take, skip));
+            return Ok(await _service.GetAll(walletId, search, take, skip));
         }
 
         /// <summary>
@@ -84,8 +78,7 @@ namespace FinanceControl.Controller
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> Update([FromRoute] Guid pixId, [FromBody] PixInsertRequest request)
         {
-            using var service = new PixService(_appSettings, _logger, _request.UserId);
-            return Ok(await service.Update(pixId, request));
+            return Ok(await _service.Update(pixId, request));
         }
 
         /// <summary>
@@ -94,12 +87,11 @@ namespace FinanceControl.Controller
         /// <param name="pixId"></param>
         /// <param name="walletId"></param>
         /// <returns></returns>
-        [HttpDelete("/v1/pix/{pixId}/wallet/{walletId}")]
+        [HttpDelete("/v1/pix/{pixId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<IActionResult> Delete([FromRoute] Guid pixId, [FromRoute] Guid walletId)
+        public async Task<IActionResult> Delete([FromRoute] Guid pixId)
         {
-            using var service = new PixService(_appSettings, _logger, _request.UserId);
-            return Ok(await service.Delete(pixId, walletId));
+            return Ok(await _service.Delete(pixId));
         }
 
         #region [ List Enuns ]
@@ -112,8 +104,7 @@ namespace FinanceControl.Controller
         [ProducesResponseType(StatusCodes.Status200OK)]
         public IActionResult ListPixTypes()
         {
-            using var service = new PixService(_appSettings, _logger, _request.UserId);
-            return Ok(service.ListPixTypes());
+            return Ok(_service.ListPixTypes());
         }
 
         #endregion

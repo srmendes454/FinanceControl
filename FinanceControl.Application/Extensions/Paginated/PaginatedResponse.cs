@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace FinanceControl.Extensions.Paginated;
+namespace FinanceControl.Application.Extensions.Paginated;
 
 public class PaginatedResponse<T>
 {

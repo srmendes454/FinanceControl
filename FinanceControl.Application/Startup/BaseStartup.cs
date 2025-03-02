@@ -1,17 +1,10 @@
-﻿using System;
-using System.IdentityModel.Tokens.Jwt;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Xml.Linq;
-using FinanceControl.Application.Extensions.RequestContainer;
-using FinanceControl.Application.Extensions.Utils.Email;
+﻿using FinanceControl.Application.Extensions.Utils.Email;
 using FinanceControl.Application.Extensions.Utils.Repetition;
 using FinanceControl.Application.Extensions.Utils.SignedBy;
-using FinanceControl.Extensions.AppSettings;
-using FinanceControl.Extensions.BaseEnvironment;
-using FinanceControl.WebApi.Extensions.Context;
+using FinanceControl.Infra.AppSettings;
+using FinanceControl.Infra.BaseEnvironment;
+using FinanceControl.Infra.Context;
+using FinanceControl.Infra.RequestContainer;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -23,9 +16,14 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
-using Serilog.Enrichers.HttpContextData;
 using Serilog.Events;
 using Serilog.Formatting.Compact;
+using System;
+using System.IdentityModel.Tokens.Jwt;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Text;
 
 namespace FinanceControl.Application.Startup;
 
@@ -53,7 +51,6 @@ public class BaseStartup
                 .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
                 .Enrich.FromLogContext()
                 .Enrich.WithCorrelationId()
-                .Enrich.WithHttpContextData()
                 .Enrich.WithExceptionStackTraceHash()
                 .WriteTo.Console(new CompactJsonFormatter())
                 .CreateLogger();
@@ -67,7 +64,6 @@ public class BaseStartup
                 .Enrich.FromLogContext()
                 .Enrich.WithMachineName()
                 .Enrich.WithCorrelationId()
-                .Enrich.WithHttpContextData()
                 .Enrich.WithExceptionStackTraceHash()
                 .WriteTo.Console(new CompactJsonFormatter())
                 .CreateLogger();
@@ -119,10 +115,11 @@ public class BaseStartup
         services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
         services.AddDbContext<IContextMongoDBDatabase, ContextMongoDBDatabase>(ServiceLifetime.Singleton, ServiceLifetime.Singleton);
         services.AddSingleton<IAppSettings, AppSettings>();
-        
+
         services.AddScoped<IEmail, Email>();
         services.AddScoped<IAddRepetition, AddRepetition>();
         services.AddScoped<ISignedBy, SignedBy>();
+
         services.AddScoped<IRequestContainer>(a =>
         {
             var httpContext = services.BuildServiceProvider().GetService<IHttpContextAccessor>();
@@ -144,7 +141,7 @@ public class BaseStartup
                 if (userId == null)
                     throw new InvalidOperationException("TOKEN_INVALID");
 
-                var name = jwtToken.Claims.FirstOrDefault(p => p.Type.ToLower().Equals("unique_name"))?.Value;
+                var name = jwtToken.Claims.FirstOrDefault(p => p.Type.ToLower().Equals("unique_name") || p.Type.ToLower().Equals("name"))?.Value;
                 if (name == null)
                     throw new InvalidOperationException("TOKEN_INVALID");
 
@@ -161,7 +158,6 @@ public class BaseStartup
         services.AddControllers();
 
         ConfigureServicesSwagger(services);
-        ConfigureServicesFilter(services);
 
         ConfigureServicesAuthentication(services);
 
@@ -214,11 +210,6 @@ public class BaseStartup
                 catch { }
             });
         }
-    }
-    private void ConfigureServicesFilter(IServiceCollection services)
-    {
-        // services.AddSingleton<ApiUserValidateFilter>();
-        // services.AddSingleton<UserPermisionFilter>();
     }
     private void ConfigureServicesAuthentication(IServiceCollection services)
     {

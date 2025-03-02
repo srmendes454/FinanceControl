@@ -4,10 +4,7 @@ namespace FinanceControl.Application.Services.Transactions.DTO_s.Request
 {
     public class TransactionsInsertRequest
     {
-        public Guid WalletId { get; set; }
-        public Guid Id { get; set; }
         public Guid AssignedId { get; set; }
-        public string AssignedEmail { get; set; }
         public string Name { get; set; }
         public bool Installment { get; set; }
         public double? Value { get; set; }

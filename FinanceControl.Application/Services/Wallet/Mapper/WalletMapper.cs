@@ -1,7 +1,7 @@
 ﻿using AutoMapper;
 using FinanceControl.Application.Services.Wallet.DTO_s.Request;
 using FinanceControl.Application.Services.Wallet.DTO_s.Response;
-using FinanceControl.Application.Services.Wallet.Model;
+using FinanceControl.Domain.Entities;
 
 namespace FinanceControl.Application.Services.Wallet.Mapper;
 

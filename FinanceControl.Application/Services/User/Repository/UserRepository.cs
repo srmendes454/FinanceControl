@@ -1,27 +1,24 @@
-﻿using FinanceControl.Application.Services.User.Model;
-using FinanceControl.Application.Services.Wallet.Model;
-using FinanceControl.Extensions.BaseRepository;
-using FinanceControl.WebApi.Extensions.Context;
+﻿using FinanceControl.Domain.Entities;
+using FinanceControl.Infra.AppSettings;
+using FinanceControl.Infra.BaseRepository;
+using FinanceControl.Infra.Context;
+using Microsoft.EntityFrameworkCore;
 using MongoDB.Driver;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using ILogger = Serilog.ILogger;
 
 namespace FinanceControl.Application.Services.User.Repository;
 
-public class UserRepository : BaseRepository<UserModel>
+public class UserRepository : BaseRepository<UserModel>, IUserRepository
 {
     #region [ Fields ]
     public IMongoCollection<UserModel> GetUserCollection() => GetMongoCollection();
     #endregion
 
     #region [ Constructor ]
-    public UserRepository(IContextMongoDBDatabase mongoDb, ILogger logger) : base(logger: logger,
-        mongoDb: mongoDb,
-        collectionName: "User")
+    public UserRepository(IContextMongoDBDatabase mongoDb, IAppSettings appSettings) : base(mongoDb, appSettings, "User")
     {
 
     }

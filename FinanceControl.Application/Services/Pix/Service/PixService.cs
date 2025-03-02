@@ -1,27 +1,31 @@
-﻿using FinanceControl.Application.Extensions.BaseService;
-using FinanceControl.Application.Extensions.Enum;
-using FinanceControl.Application.Services.Cards.Model.Enum;
+﻿using FinanceControl.Application.Extensions.Paginated;
 using FinanceControl.Application.Services.Pix.DTO_s.Request;
 using FinanceControl.Application.Services.Pix.DTO_s.Response;
-using FinanceControl.Application.Services.Pix.Model;
-using FinanceControl.Application.Services.Pix.Model.Enum;
 using FinanceControl.Application.Services.Pix.Repository;
 using FinanceControl.Application.Services.Wallet.Repository;
-using FinanceControl.Extensions.AppSettings;
-using FinanceControl.Extensions.Paginated;
-using Serilog;
+using FinanceControl.Domain.Entities;
+using FinanceControl.Domain.Enuns;
+using FinanceControl.Infra.AppSettings;
+using FinanceControl.Infra.BaseService;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace FinanceControl.Application.Services.Pix.Service
 {
-    public class PixService : BaseService
+    public class PixService : BaseService<PixService>, IPixService
     {
+        #region [ Fields ]
+
+        private readonly IPixRepository _repository;
+
+        #endregion
+
         #region [ Constructor ]
 
-        public PixService(IAppSettings appSettings, ILogger logger, Guid currentUserId) : base(appSettings, logger, currentUserId)
+        public PixService(IAppSettings appSettings, IPixRepository repository) : base(appSettings)
         {
+            _repository = repository;
         }
 
         #endregion
@@ -49,16 +53,16 @@ namespace FinanceControl.Application.Services.Pix.Service
                 if (request.WalletId == Guid.Empty || userId == Guid.Empty || request == null)
                     return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-                using var walletRepository = new WalletRepository(_appSettings.GetMongoDb(), _logger);
+                using var walletRepository = new WalletRepository(_appSettings.GetMongoDb(), _appSettings);
                 var wallet = await walletRepository.GetById(request.WalletId, userId);
                 if (wallet == null)
                     return ErrorResponse(WalletNotFound);
 
-                var model = new PixModel(userId, request.Name, request.LinkedAccount, request.ExpirationDay, Enum.Parse<PixType>(request.Type), request.Color, new PixWalletModel(wallet.WalletId, wallet.Name));
+                var model = new PixModel(userId, request.Name, request.LinkedAccount, Enum.Parse<PixType>(request.Type), request.Color, new PixWalletModel(wallet.WalletId, wallet.Name));
 
-                await new PixRepository(_appSettings.GetMongoDb(), _logger).InsertOneAsync(model);
+                await _repository.InsertOneAsync(model);
 
-                return SuccessResponse(Pix, Message.SUCCESSFULLY_ADDED.GetEnumDescription());
+                return SuccessResponse(Pix, Message.SUCCESSFULLY_ADDED_M.GetEnumDescription());
             }
             catch (Exception ex)
             {
@@ -69,20 +73,17 @@ namespace FinanceControl.Application.Services.Pix.Service
         /// <summary>
         /// Serviço para Obter um Pix
         /// </summary>
-        /// <param name="walletId"></param>
         /// <param name="pixId"></param>
         /// <returns></returns>
-        public async Task<ResultValue> GetById(Guid walletId, Guid pixId)
+        public async Task<ResultValue> GetById(Guid pixId)
         {
             try
             {
                 var userId = GetCurrentUserId();
-                if (pixId == Guid.Empty || userId == Guid.Empty || walletId == Guid.Empty)
+                if (pixId == Guid.Empty || userId == Guid.Empty)
                     return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-                using var repository = new PixRepository(_appSettings.GetMongoDb(), _logger);
-
-                var record = await repository.GetById(pixId, walletId);
+                var record = await _repository.GetById(pixId);
                 if (record == null)
                     return ErrorResponse(PixNotFound);
 
@@ -111,9 +112,7 @@ namespace FinanceControl.Application.Services.Pix.Service
                 if (walletId == Guid.Empty)
                     return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-                using var repository = new PixRepository(_appSettings.GetMongoDb(), _logger);
-
-                var list = await repository.GetAll(walletId, search, take, skip);
+                var list = await _repository.GetAll(walletId, search, take, skip);
                 if (list == null)
                     return SuccessResponse(new PaginatedResponse<PixResponse> { Records = new List<PixResponse>() });
 
@@ -142,18 +141,17 @@ namespace FinanceControl.Application.Services.Pix.Service
         {
             try
             {
-                if (request == null || pixId == Guid.Empty || request.WalletId == Guid.Empty)
+                if (request == null || pixId == Guid.Empty)
                     return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-                using var repository = new PixRepository(_appSettings.GetMongoDb(), _logger);
-                var model = await repository.GetById(pixId, request.WalletId);
+                var model = await _repository.GetById(pixId);
                 if (model == null)
                     return ErrorResponse(PixNotFound);
 
-                model.Update(request.Name, request.LinkedAccount, request.ExpirationDay, Enum.Parse<PixType>(request.Type), request.Color);
-                repository.Update(request.WalletId, model);
+                model.Update(request.Name, request.LinkedAccount, Enum.Parse<PixType>(request.Type), request.Color);
+                await _repository.Update(model);
 
-                return SuccessResponse(Pix, Message.SUCCESSFULLY_UPDATED.GetEnumDescription());
+                return SuccessResponse(Pix, Message.SUCCESSFULLY_UPDATED_M.GetEnumDescription());
             }
             catch (Exception ex)
             {
@@ -167,16 +165,16 @@ namespace FinanceControl.Application.Services.Pix.Service
         /// <param name="walletId"></param>
         /// <param name="pixId"></param>
         /// <returns></returns>
-        public async Task<ResultValue> Delete(Guid pixId, Guid walletId)
+        public async Task<ResultValue> Delete(Guid pixId)
         {
             try
             {
-                if (pixId == Guid.Empty || walletId == Guid.Empty)
+                if (pixId == Guid.Empty)
                     return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-                new PixRepository(_appSettings.GetMongoDb(), _logger).Delete(walletId, pixId);
+                await _repository.Delete(pixId);
 
-                return SuccessResponse(Pix, Message.SUCCESSFULLY_DELETED.GetEnumDescription());
+                return SuccessResponse(Pix, Message.SUCCESSFULLY_DELETED_M.GetEnumDescription());
             }
             catch (Exception ex)
             {

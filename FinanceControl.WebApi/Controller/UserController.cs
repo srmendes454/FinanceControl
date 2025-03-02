@@ -1,31 +1,26 @@
-﻿using FinanceControl.Application.Extensions.ControllerBase;
-using FinanceControl.Application.Extensions.RequestContainer;
-using FinanceControl.Application.Services.User.DTO_s;
+﻿using FinanceControl.Application.Services.User.DTO_s;
 using FinanceControl.Application.Services.User.Service;
-using FinanceControl.Extensions.AppSettings;
+using FinanceControl.Infra.AppSettings;
+using FinanceControl.Infra.ControllerBase;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Threading.Tasks;
-using FinanceControl.Application.Extensions.Utils.Email;
 
 namespace FinanceControl.Controller;
 
-public class UserController : BaseController
+public class UserController : BaseController<UserController>
 {
     #region [ Fields ]
 
-    private readonly IRequestContainer _request;
-    private readonly IEmail _email;
+    private readonly IUserService _service;
 
     #endregion
     #region [ Contructor ]
-    public UserController(IAppSettings appSettings, IRequestContainer request, IEmail email) : base(appSettings)
+    public UserController(IAppSettings appSettings, IUserService service) : base(appSettings)
     {
-        _logger = appSettings.GetLogger().ForContext<UserController>();
-        _request = request;
-        _email = email;
+        _service = service;
     }
     #endregion
 
@@ -41,8 +36,7 @@ public class UserController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> RegisterUser([FromBody] UserInsertRequest request)
     {
-        using var service = new UserService(_appSettings, _logger, Guid.Empty, _email);
-        return Ok(await service.Register(request));
+        return Ok(await _service.Register(request));
     }
 
     /// <summary>
@@ -55,8 +49,7 @@ public class UserController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Login([FromBody] UserLoginRequest request)
     {
-        using var service = new UserService(_appSettings, _logger, Guid.Empty, _email);
-        return Ok(await service.Login(request));
+        return Ok(await _service.Login(request));
     }
 
     /// <summary>
@@ -68,8 +61,7 @@ public class UserController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdateUser([FromBody] UserUpdateRequest request)
     {
-        using var service = new UserService(_appSettings, _logger, _request.UserId, _email);
-        return Ok(await service.Update(request));
+        return Ok(await _service.Update(request));
     }
 
     /// <summary>
@@ -81,8 +73,7 @@ public class UserController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdatePasswordUser([FromBody] UserPasswordRequest request)
     {
-        using var service = new UserService(_appSettings, _logger, _request.UserId, _email);
-        return Ok(await service.UpdatePassword(request));
+        return Ok(await _service.UpdatePassword(request));
     }
 
     /// <summary>
@@ -93,8 +84,7 @@ public class UserController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetById()
     {
-        using var service = new UserService(_appSettings, _logger, _request.UserId, _email);
-        return Ok(await service.GetById());
+        return Ok(await _service.GetById());
     }
 
     /// <summary>
@@ -107,8 +97,7 @@ public class UserController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> SendEmailWithCodeToResetPassword([FromBody] UserSendEmailRequest request)
     {
-        using var service = new UserService(_appSettings, _logger, Guid.Empty, _email);
-        return Ok(await service.SendEmailWithCodeToResetPassword(request));
+        return Ok(await _service.SendEmailWithCodeToResetPassword(request));
     }
 
     /// <summary>
@@ -121,8 +110,7 @@ public class UserController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> ResetPassword([FromBody] UserResetPasswordRequest request)
     {
-        using var service = new UserService(_appSettings, _logger, Guid.Empty, _email);
-        return Ok(await service.ResetPassword(request));
+        return Ok(await _service.ResetPassword(request));
     }
 
     #region [ Family Members ]
@@ -135,8 +123,7 @@ public class UserController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetFamilyMembersByUserId()
     {
-        using var service = new UserService(_appSettings, _logger, _request.UserId, _email);
-        return Ok(await service.GetFamilyMembersByUserId());
+        return Ok(await _service.GetFamilyMembersByUserId());
     }
 
     /// <summary>
@@ -148,8 +135,7 @@ public class UserController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetFamilyMemberByUserId([FromRoute] Guid familyId)
     {
-        using var service = new UserService(_appSettings, _logger, _request.UserId, _email);
-        return Ok(await service.GetFamilyMemberByUserId(familyId));
+        return Ok(await _service.GetFamilyMemberByUserId(familyId));
     }
 
     /// <summary>
@@ -161,8 +147,7 @@ public class UserController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> InsertFamilyMember([FromBody] FamilyMemberRequest request)
     {
-        using var service = new UserService(_appSettings, _logger, _request.UserId, _email);
-        return Ok(await service.InsertFamilyMember(request));
+        return Ok(await _service.InsertFamilyMember(request));
     }
 
     /// <summary>
@@ -175,8 +160,7 @@ public class UserController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdateFamilyMember([FromRoute] Guid familyId, [FromBody] FamilyMemberRequest request)
     {
-        using var service = new UserService(_appSettings, _logger, _request.UserId, _email);
-        return Ok(await service.UpdateFamilyMember(familyId, request));
+        return Ok(await _service.UpdateFamilyMember(familyId, request));
     }
 
     /// <summary>
@@ -188,8 +172,7 @@ public class UserController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> ActiveInactiveFamilyMember([FromRoute] Guid familyId)
     {
-        using var service = new UserService(_appSettings, _logger, _request.UserId, _email);
-        return Ok(await service.ActiveInactiveFamilyMember(familyId));
+        return Ok(await _service.ActiveInactiveFamilyMember(familyId));
     }
 
     /// <summary>
@@ -201,8 +184,7 @@ public class UserController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> DeleteFamilyMember([FromRoute] Guid familyId)
     {
-        using var service = new UserService(_appSettings, _logger, _request.UserId, _email);
-        return Ok(await service.DeleteFamilyMember(familyId));
+        return Ok(await _service.DeleteFamilyMember(familyId));
     }
     #endregion
     #endregion

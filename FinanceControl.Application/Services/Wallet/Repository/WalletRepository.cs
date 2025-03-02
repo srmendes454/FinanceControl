@@ -1,8 +1,8 @@
-﻿using FinanceControl.Application.Services.Wallet.Model;
-using FinanceControl.Extensions.BaseRepository;
-using FinanceControl.WebApi.Extensions.Context;
+﻿using FinanceControl.Domain.Entities;
+using FinanceControl.Infra.AppSettings;
+using FinanceControl.Infra.BaseRepository;
+using FinanceControl.Infra.Context;
 using MongoDB.Driver;
-using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace FinanceControl.Application.Services.Wallet.Repository;
 
-public class WalletRepository : BaseRepository<WalletModel>
+public class WalletRepository : BaseRepository<WalletModel>, IWalletRepository
 {
     #region [ Fields ]
 
@@ -20,8 +20,9 @@ public class WalletRepository : BaseRepository<WalletModel>
 
     #region [ Constructor ]
 
-    public WalletRepository(IContextMongoDBDatabase mongoDb, ILogger logger) : base(logger: logger,
+    public WalletRepository(IContextMongoDBDatabase mongoDb, IAppSettings appSettings) : base(
         mongoDb: mongoDb,
+        appSettings: appSettings,
         collectionName: "Wallet")
     {
 
@@ -55,9 +56,7 @@ public class WalletRepository : BaseRepository<WalletModel>
             {
                 WalletId = w.WalletId,
                 Name = w.Name,
-                Color = w.Color,
-                Income = w.Income,
-                ReceiptDay = w.ReceiptDay
+                Color = w.Color
             })
             .FirstOrDefaultAsync();
 
@@ -86,9 +85,7 @@ public class WalletRepository : BaseRepository<WalletModel>
             {
                 WalletId = w.WalletId,
                 Name = w.Name,
-                Color = w.Color,
-                Income = w.Income,
-                ReceiptDay = w.ReceiptDay
+                Color = w.Color
             })
             .ToListAsync();
 
@@ -110,8 +107,6 @@ public class WalletRepository : BaseRepository<WalletModel>
         var update = Builders<WalletModel>.Update
             .Set(rec => rec.Name, model.Name)
             .Set(rec => rec.Color, model.Color)
-            .Set(rec => rec.Income, model.Income)
-            .Set(rec => rec.ReceiptDay, model.ReceiptDay)
             .Set(p => p.UpdateDate, model.UpdateDate);
 
         await UpdateOneAsync(update, filter);

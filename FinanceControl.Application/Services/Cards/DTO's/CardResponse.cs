@@ -10,4 +10,5 @@ public class CardResponse
     public int ExpirationDay { get; set; }
     public int ClosingDay { get; set; }
     public string Type { get; set; }
+    public string StatusCardBill { get; set; }
 }

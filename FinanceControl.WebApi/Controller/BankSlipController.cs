@@ -1,8 +1,9 @@
-﻿using FinanceControl.Application.Extensions.ControllerBase;
-using FinanceControl.Application.Extensions.RequestContainer;
-using FinanceControl.Application.Services.BankSlip.DTO_s.Request;
+﻿using FinanceControl.Application.Services.BankSlip.DTO_s.Request;
 using FinanceControl.Application.Services.BankSlip.Service;
-using FinanceControl.Extensions.AppSettings;
+using FinanceControl.Application.Services.Cards.Service;
+using FinanceControl.Infra.AppSettings;
+using FinanceControl.Infra.ControllerBase;
+using FinanceControl.Infra.RequestContainer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -10,20 +11,19 @@ using System.Threading.Tasks;
 
 namespace FinanceControl.Controller
 {
-    public class BankSlipController : BaseController
+    public class BankSlipController : BaseController<BankSlipController>
     {
         #region [ Fields ]
 
-        private readonly IRequestContainer _request;
+        private readonly IBankSlipService _service;
 
         #endregion
 
         #region [ Constructor ]
 
-        public BankSlipController(IAppSettings appSettings, IRequestContainer request) : base(appSettings)
+        public BankSlipController(IAppSettings appSettings, IBankSlipService service) : base(appSettings)
         {
-            _logger = appSettings.GetLogger().ForContext<BankSlipController>();
-            _request = request;
+            _service = service;
         }
 
         #endregion
@@ -39,8 +39,7 @@ namespace FinanceControl.Controller
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> InsertCard([FromBody] BankSlipInsertRequest request)
         {
-            using var service = new BankSlipService(_appSettings, _logger, _request.UserId);
-            return Ok(await service.Insert(request));
+            return Ok(await _service.Insert(request));
         }
 
         /// <summary>
@@ -49,12 +48,11 @@ namespace FinanceControl.Controller
         /// <param name="cardId"></param>
         /// <param name="walletId"></param>
         /// <returns></returns>
-        [HttpGet("/v1/bank-slip/{bankSlipId}/wallet/{walletId}")]
+        [HttpGet("/v1/bank-slip/{bankSlipId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetById([FromRoute] Guid bankSlipId, [FromRoute] Guid walletId)
+        public async Task<IActionResult> GetById([FromRoute] Guid bankSlipId)
         {
-            using var service = new BankSlipService(_appSettings, _logger, _request.UserId);
-            return Ok(await service.GetById(walletId, bankSlipId));
+            return Ok(await _service.GetById(bankSlipId));
         }
 
         /// <summary>
@@ -69,8 +67,7 @@ namespace FinanceControl.Controller
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAll([FromRoute] Guid walletId, [FromQuery] string search = null, [FromQuery] int take = 20, [FromQuery] int skip = 1)
         {
-            using var service = new BankSlipService(_appSettings, _logger, _request.UserId);
-            return Ok(await service.GetAll(walletId, search, take, skip));
+            return Ok(await _service.GetAll(walletId, search, take, skip));
         }
 
         /// <summary>
@@ -83,8 +80,7 @@ namespace FinanceControl.Controller
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> Update([FromRoute] Guid bankSlipId, [FromBody] BankSlipUpdateRequest request)
         {
-            using var service = new BankSlipService(_appSettings, _logger, _request.UserId);
-            return Ok(await service.Update(bankSlipId, request));
+            return Ok(await _service.Update(bankSlipId, request));
         }
 
         /// <summary>
@@ -93,12 +89,11 @@ namespace FinanceControl.Controller
         /// <param name="bankSlipId"></param>
         /// <param name="walletId"></param>
         /// <returns></returns>
-        [HttpDelete("/v1/bank-slip/{bankSlipId}/wallet/{walletId}")]
+        [HttpDelete("/v1/bank-slip/{bankSlipId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<IActionResult> Delete([FromRoute] Guid bankSlipId, [FromRoute] Guid walletId)
+        public async Task<IActionResult> Delete([FromRoute] Guid bankSlipId)
         {
-            using var service = new BankSlipService(_appSettings, _logger, _request.UserId);
-            return Ok(await service.Delete(bankSlipId, walletId));
+            return Ok(await _service.Delete(bankSlipId));
         }
 
         #endregion

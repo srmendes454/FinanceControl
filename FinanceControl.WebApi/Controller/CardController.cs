@@ -1,24 +1,28 @@
 ﻿using FinanceControl.Application.Services.Cards.DTO_s;
-using FinanceControl.Extensions.AppSettings;
+using FinanceControl.Application.Services.Cards.Service;
+using FinanceControl.Application.Services.Wallet.Service;
+using FinanceControl.Infra.AppSettings;
+using FinanceControl.Infra.ControllerBase;
+using FinanceControl.Infra.RequestContainer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Threading.Tasks;
-using FinanceControl.Application.Extensions.ControllerBase;
-using FinanceControl.Application.Extensions.RequestContainer;
-using FinanceControl.Application.Services.Cards.Service;
-using FinanceControl.Application.Services.Transactions.Service;
 
 namespace FinanceControl.Controller;
 
-public class CardController : BaseController
+public class CardController : BaseController<CardController>
 {
-    private readonly IRequestContainer _request;
+    #region [ Fields ]
+
+    private readonly ICardService _service;
+
+    #endregion
+
     #region [ Contructor ]
-    public CardController(IAppSettings appSettings, IRequestContainer request) : base(appSettings)
+    public CardController(IAppSettings appSettings, ICardService service) : base(appSettings)
     {
-        _logger = appSettings.GetLogger().ForContext<CardController>();
-        _request = request;
+        _service = service;
     }
     #endregion
 
@@ -33,8 +37,7 @@ public class CardController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> InsertCard([FromBody] CardInsertRequest request)
     {
-        using var service = new CardService(_appSettings, _logger, _request.UserId);
-        return Ok(await service.InsertCard(request));
+        return Ok(await _service.InsertCard(request));
     }
 
     /// <summary>
@@ -43,12 +46,11 @@ public class CardController : BaseController
     /// <param name="cardId"></param>
     /// <param name="walletId"></param>
     /// <returns></returns>
-    [HttpGet("/v1/card/{cardId}/wallet/{walletId}")]
+    [HttpGet("/v1/card/{cardId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetById([FromRoute] Guid cardId, [FromRoute] Guid walletId)
+    public async Task<IActionResult> GetById([FromRoute] Guid cardId)
     {
-        using var service = new CardService(_appSettings, _logger, _request.UserId);
-        return Ok(await service.GetById(walletId, cardId));
+        return Ok(await _service.GetById(cardId));
     }
 
     /// <summary>
@@ -63,8 +65,7 @@ public class CardController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll([FromRoute] Guid walletId, [FromQuery] string search = null, [FromQuery] int take = 20, [FromQuery] int skip = 1)
     {
-        using var service = new CardService(_appSettings, _logger, _request.UserId);
-        return Ok(await service.GetAll(walletId, search, take, skip));
+        return Ok(await _service.GetAll(walletId, search, take, skip));
     }
 
     /// <summary>
@@ -77,8 +78,7 @@ public class CardController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Update([FromRoute] Guid cardId, [FromBody] CardUpdateRequest request)
     {
-        using var service = new CardService(_appSettings, _logger, _request.UserId);
-        return Ok(await service.Update(cardId, request));
+        return Ok(await _service.Update(cardId, request));
     }
 
     /// <summary>
@@ -87,12 +87,11 @@ public class CardController : BaseController
     /// <param name="walletId"></param>
     /// <param name="cardId"></param>
     /// <returns></returns>
-    [HttpPut("/v1/card/{cardId}/wallet/{walletId}/active")]
+    [HttpPut("/v1/card/{cardId}/active")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> Active([FromRoute] Guid walletId, [FromRoute] Guid cardId)
+    public async Task<IActionResult> Active([FromRoute] Guid cardId)
     {
-        using var service = new CardService(_appSettings, _logger, _request.UserId);
-        return Ok(await service.Active(walletId, cardId));
+        return Ok(await _service.Active(cardId));
     }
 
     /// <summary>
@@ -101,12 +100,11 @@ public class CardController : BaseController
     /// <param name="walletId"></param>
     /// <param name="cardId"></param>
     /// <returns></returns>
-    [HttpPut("/v1/card/{cardId}/wallet/{walletId}/inactive")]
+    [HttpPut("/v1/card/{cardId}/inactive")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> Inactive([FromRoute] Guid walletId, [FromRoute] Guid cardId)
+    public async Task<IActionResult> Inactive([FromRoute] Guid cardId)
     {
-        using var service = new CardService(_appSettings, _logger, _request.UserId);
-        return Ok(await service.Inactive(walletId, cardId));
+        return Ok(await _service.Inactive(cardId));
     }
 
     /// <summary>
@@ -115,12 +113,11 @@ public class CardController : BaseController
     /// <param name="cardId"></param>
     /// <param name="walletId"></param>
     /// <returns></returns>
-    [HttpDelete("/v1/card/{cardId}/wallet/{walletId}")]
+    [HttpDelete("/v1/card/{cardId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> Delete([FromRoute] Guid cardId, [FromRoute] Guid walletId)
+    public async Task<IActionResult> Delete([FromRoute] Guid cardId)
     {
-        using var service = new CardService(_appSettings, _logger, _request.UserId);
-        return Ok(await service.Delete(cardId, walletId));
+        return Ok(await _service.Delete(cardId));
     }
 
     #region [ List Enuns ]
@@ -133,8 +130,7 @@ public class CardController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public IActionResult ListCardTypes()
     {
-        using var service = new CardService(_appSettings, _logger, _request.UserId);
-        return Ok(service.ListCardTypes());
+        return Ok(_service.ListCardTypes());
     }
 
     #endregion

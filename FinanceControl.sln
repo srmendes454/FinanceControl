@@ -7,6 +7,15 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FinanceControl.WebApi", "Fi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FinanceControl.Application", "FinanceControl.Application\FinanceControl.Application.csproj", "{06D91610-E3F9-4D38-BCEE-0CDE57A00EE8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FinanceControl.Test", "Test\FinanceControl.Test.csproj", "{3B7932FD-0308-43B3-9D73-81A42B9C651D}"
+	ProjectSection(ProjectDependencies) = postProject
+		{06D91610-E3F9-4D38-BCEE-0CDE57A00EE8} = {06D91610-E3F9-4D38-BCEE-0CDE57A00EE8}
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FinanceControl.Domain", "FinanceControl.Domain\FinanceControl.Domain.csproj", "{8E04E27D-3D30-4A18-AC72-B357A2E38687}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FinanceControl.Infra", "FinanceControl.Infra\FinanceControl.Infra.csproj", "{7AA1FEBA-8382-4775-AA55-555C2844F487}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +30,18 @@ Global
 		{06D91610-E3F9-4D38-BCEE-0CDE57A00EE8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{06D91610-E3F9-4D38-BCEE-0CDE57A00EE8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{06D91610-E3F9-4D38-BCEE-0CDE57A00EE8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3B7932FD-0308-43B3-9D73-81A42B9C651D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3B7932FD-0308-43B3-9D73-81A42B9C651D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3B7932FD-0308-43B3-9D73-81A42B9C651D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3B7932FD-0308-43B3-9D73-81A42B9C651D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8E04E27D-3D30-4A18-AC72-B357A2E38687}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8E04E27D-3D30-4A18-AC72-B357A2E38687}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8E04E27D-3D30-4A18-AC72-B357A2E38687}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8E04E27D-3D30-4A18-AC72-B357A2E38687}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7AA1FEBA-8382-4775-AA55-555C2844F487}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7AA1FEBA-8382-4775-AA55-555C2844F487}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7AA1FEBA-8382-4775-AA55-555C2844F487}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7AA1FEBA-8382-4775-AA55-555C2844F487}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

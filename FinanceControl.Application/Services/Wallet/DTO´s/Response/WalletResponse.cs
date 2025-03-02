@@ -7,6 +7,5 @@ public class WalletResponse
     public Guid WalletId { get; set; }
     public string Name { get; set; }
     public string Color { get; set; }
-    public int ReceiptDay { get; set; }
-    public double Income { get; set; }
+    public double Price { get; set; }
 }

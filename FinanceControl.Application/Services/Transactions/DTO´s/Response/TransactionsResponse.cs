@@ -1,5 +1,4 @@
-﻿using FinanceControl.Application.Services.Transactions.Model;
-using System;
+﻿using System;
 
 namespace FinanceControl.Application.Services.Transactions.DTO_s.Response
 {
@@ -26,6 +25,8 @@ namespace FinanceControl.Application.Services.Transactions.DTO_s.Response
         public string CashFlow { get; set; }
         public string ExpenseType { get; set; }
         public string DatePurchase { get; set; }
+        public string ExpirationDate { get; set; }
+        public string YearMonthReference { get; set; }
         public string Assigned { get; set; }
         public double Value { get; set; }
         public string Installment { get; set; }

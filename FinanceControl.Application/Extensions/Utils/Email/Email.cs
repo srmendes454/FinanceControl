@@ -40,6 +40,8 @@ public class Email : IEmail
 
             var smtp = new SmtpClient(host, port)
             {
+				DeliveryMethod = SmtpDeliveryMethod.Network,
+                UseDefaultCredentials = false,
                 Credentials = new NetworkCredential(userName, password),
                 EnableSsl = true
             };

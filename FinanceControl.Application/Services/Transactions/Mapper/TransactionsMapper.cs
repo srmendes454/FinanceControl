@@ -1,7 +1,7 @@
 ﻿using AutoMapper;
 using FinanceControl.Application.Services.Transactions.DTO_s.Request;
 using FinanceControl.Application.Services.Transactions.DTO_s.Response;
-using FinanceControl.Application.Services.Transactions.Model;
+using FinanceControl.Domain.Entities;
 
 namespace FinanceControl.Application.Services.Transactions.Mapper
 {

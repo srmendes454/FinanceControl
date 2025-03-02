@@ -1,6 +1,6 @@
 ﻿using AutoMapper;
 using FinanceControl.Application.Services.BankSlip.DTO_s.Response;
-using FinanceControl.Application.Services.BankSlip.Model;
+using FinanceControl.Domain.Entities;
 
 namespace FinanceControl.Application.Services.BankSlip.Mapper
 {

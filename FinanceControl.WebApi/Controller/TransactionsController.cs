@@ -1,8 +1,5 @@
-﻿using FinanceControl.Application.Extensions.ControllerBase;
-using FinanceControl.Application.Extensions.RequestContainer;
-using FinanceControl.Application.Services.Transactions.DTO_s.Request;
+﻿using FinanceControl.Application.Services.Transactions.DTO_s.Request;
 using FinanceControl.Application.Services.Transactions.Service;
-using FinanceControl.Extensions.AppSettings;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
@@ -10,25 +7,25 @@ using FinanceControl.Application.Extensions.Utils.Email;
 using System;
 using FinanceControl.Application.Extensions.Utils.Repetition;
 using FinanceControl.Application.Extensions.Utils.SignedBy;
+using FinanceControl.Infra.AppSettings;
+using FinanceControl.Infra.ControllerBase;
+using FinanceControl.Infra.RequestContainer;
 
 namespace FinanceControl.Controller;
 
-public class TransactionsController : BaseController
+public class TransactionsController : BaseController<TransactionsController>
 {
-    private readonly IRequestContainer _request;
-    private readonly IEmail _email;
-    private readonly IAddRepetition _addRepetition;
-    private readonly ISignedBy _signedBy;
+    #region [ Fields ]
+
+    private readonly ITransactionsService _service;
+
+    #endregion
 
     #region [ Constructor ]
 
-    public TransactionsController(IAppSettings appSettings, IRequestContainer request, IEmail email, IAddRepetition addRepetition, ISignedBy signedBy) : base(appSettings)
+    public TransactionsController(IAppSettings appSettings, ITransactionsService service) : base(appSettings)
     {
-        _logger = appSettings.GetLogger().ForContext<TransactionsController>();
-        _request = request;
-        _email = email;
-        _addRepetition = addRepetition;
-        _signedBy = signedBy;
+        _service = service;
     }
 
     #endregion
@@ -36,16 +33,39 @@ public class TransactionsController : BaseController
     #region [ Public Routes ]
 
     /// <summary>
-    /// Insere uma Transação
+    /// Insere uma Transação por Cartão
     /// </summary>
     /// <param name="request"></param>
     /// <returns></returns>
-    [HttpPost("/v1/transaction")]
+    [HttpPost("/v1/transaction/card/{cardId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> Insert([FromBody] TransactionsInsertRequest request)
+    public async Task<IActionResult> InsertToCard([FromRoute] Guid cardId, [FromBody] TransactionsInsertRequest request)
     {
-        using var service = new TransactionsService(_appSettings, _logger, _request.UserId, _email, _addRepetition, _signedBy);
-        return Ok(await service.Insert(request));
+        return Ok(await _service.InsertToCard(cardId, request));
+    }
+
+    /// <summary>
+    /// Insere uma Transação por Boleto
+    /// </summary>
+    /// <param name="request"></param>
+    /// <returns></returns>
+    [HttpPost("/v1/transaction/bank-slip/{bankSlipId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> InsertToBankSlip([FromRoute] Guid bankSlipId, [FromBody] TransactionsInsertRequest request)
+    {
+        return Ok(await _service.InsertToBankSlip(bankSlipId, request));
+    }
+
+    /// <summary>
+    /// Insere uma Transação por Boleto
+    /// </summary>
+    /// <param name="request"></param>
+    /// <returns></returns>
+    [HttpPost("/v1/transaction/pix/{pixId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> InsertToPix([FromRoute] Guid pixId, [FromBody] TransactionsInsertRequest request)
+    {
+        return Ok(await _service.InsertToPix(pixId, request));
     }
 
     /// <summary>
@@ -57,8 +77,7 @@ public class TransactionsController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAllByPaymentId([FromRoute] Guid paymentId, [FromQuery] Guid assignedId, [FromQuery] string search = null, [FromQuery] string type = null, [FromQuery] int year = 0, [FromQuery] int month = 0, [FromQuery] int take = 20, [FromQuery] int skip = 1)
     {
-        using var service = new TransactionsService(_appSettings, _logger, _request.UserId, _email, _addRepetition, _signedBy);
-        return Ok(await service.GetAllByPaymentId(paymentId, assignedId, search, type, year, month, take, skip));
+        return Ok(await _service.GetAllByPaymentId(paymentId, assignedId, search, type, year, month, take, skip));
     }
 
     /// <summary>
@@ -70,8 +89,7 @@ public class TransactionsController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetByIdAndDate([FromRoute] Guid transactionId, [FromQuery] int year = 0, [FromQuery] int month = 0)
     {
-        using var service = new TransactionsService(_appSettings, _logger, _request.UserId, _email, _addRepetition, _signedBy);
-        return Ok(await service.GetByIdAndDate(transactionId, year, month));
+        return Ok(await _service.GetByIdAndDate(transactionId, year, month));
     }
 
     /// <summary>
@@ -83,8 +101,19 @@ public class TransactionsController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Update([FromBody] TransactionsUpdateRequest request, [FromRoute] Guid transactionId, [FromQuery] int year = 0, [FromQuery] int month = 0)
     {
-        using var service = new TransactionsService(_appSettings, _logger, _request.UserId, _email, _addRepetition, _signedBy);
-        return Ok(await service.Update(transactionId, year, month, request));
+        return Ok(await _service.Update(transactionId, year, month, request));
+    }
+
+    /// <summary>
+    /// Move as Transações
+    /// </summary>
+    /// <param name="transactionId"></param>
+    /// <returns></returns>
+    [HttpPut("/v1/transaction/{transactionId}/move")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> Update([FromRoute] Guid transactionId, [FromQuery] bool next)
+    {
+        return Ok(await _service.MoveTransaction(transactionId, next));
     }
 
     /// <summary>
@@ -94,10 +123,9 @@ public class TransactionsController : BaseController
     /// <returns></returns>
     [HttpDelete("/v1/transaction/{transactionId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> Delete([FromRoute] Guid transactionId, [FromQuery] int year = 0, [FromQuery] int month = 0)
+    public async Task<IActionResult> Delete([FromRoute] Guid transactionId, [FromQuery] int year = 0, [FromQuery] int month = 0, [FromQuery] bool deleteAll = false)
     {
-        using var service = new TransactionsService(_appSettings, _logger, _request.UserId, _email, _addRepetition, _signedBy);
-        return Ok(await service.Delete(transactionId, year, month));
+        return Ok(await _service.Delete(transactionId, year, month, deleteAll));
     }
 
     #region [ Assigned Transaction ]
@@ -111,8 +139,7 @@ public class TransactionsController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> ListAssignedTransactions(string search, int take = 20, int skip = 1)
     {
-        using var service = new TransactionsService(_appSettings, _logger, _request.UserId, _email, _addRepetition, _signedBy);
-        return Ok(await service.ListAssignedTransactions(search, take, skip));
+        return Ok(await _service.ListAssignedTransactions(search, take, skip));
     }
 
     /// <summary>
@@ -124,8 +151,7 @@ public class TransactionsController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> EvaluateAssignedTransaction([FromBody] TransactionsEvaluateAssignedRequest request)
     {
-        using var service = new TransactionsService(_appSettings, _logger, _request.UserId, _email, _addRepetition, _signedBy);
-        return Ok(await service.EvaluateAssignedTransaction(request));
+        return Ok(await _service.EvaluateAssignedTransaction(request));
     }
 
     #endregion
@@ -140,8 +166,7 @@ public class TransactionsController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public IActionResult ListExpenseType()
     {
-        using var service = new TransactionsService(_appSettings, _logger, _request.UserId, _email, _addRepetition, _signedBy);
-        return Ok(service.ListExpenseType());
+        return Ok(_service.ListExpenseType());
     }
 
     /// <summary>
@@ -152,8 +177,7 @@ public class TransactionsController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public IActionResult ListCashFlow()
     {
-        using var service = new TransactionsService(_appSettings, _logger, _request.UserId, _email, _addRepetition, _signedBy);
-        return Ok(service.ListCashFlow());
+        return Ok(_service.ListCashFlow());
     }
 
     /// <summary>
@@ -164,8 +188,7 @@ public class TransactionsController : BaseController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public IActionResult ListTransactionsType()
     {
-        using var service = new TransactionsService(_appSettings, _logger, _request.UserId, _email, _addRepetition, _signedBy);
-        return Ok(service.ListTransactionsType());
+        return Ok(_service.ListTransactionsType());
     }
 
     #endregion
