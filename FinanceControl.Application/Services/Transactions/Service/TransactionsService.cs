@@ -259,6 +259,9 @@ namespace FinanceControl.Application.Services.Transactions.Service
                 else
                 {
                     model.Value = request.Value;
+                    model.ExpirationDate = request.DatePurchase != default ? request.DatePurchase : DateTime.UtcNow;
+                    model.YearMonthReference = model.ExpirationDate.ToString("yyyy/MM");
+
                     await _repository.InsertOneAsync(model);
                 }
 

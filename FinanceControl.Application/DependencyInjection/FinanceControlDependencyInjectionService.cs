@@ -1,6 +1,7 @@
 ﻿using FinanceControl.Application.Services.BankSlip.Service;
 using FinanceControl.Application.Services.CardBill.Service;
 using FinanceControl.Application.Services.Cards.Service;
+using FinanceControl.Application.Services.Division.Service;
 using FinanceControl.Application.Services.Pix.Service;
 using FinanceControl.Application.Services.Transactions.Service;
 using FinanceControl.Application.Services.User.Service;
@@ -23,5 +24,6 @@ public static class FinanceControlDependencyInjectionService
         services.AddScoped<IBankSlipService, BankSlipService>();
         services.AddScoped<IPixService, PixService>();
         services.AddScoped<ITransactionsService, TransactionsService>();
+        services.AddScoped<IDivisionService, DivisionService>();
     }
 }

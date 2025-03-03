@@ -27,7 +27,7 @@ public class WalletService : BaseService<WalletService>, IWalletService
 
     #region [ Constructor ]
 
-    public WalletService(IAppSettings appSettings, IUserRepository useRepository, IWalletRepository repository, ITransactionsRepository transactionsRepository) : base(appSettings)
+    public WalletService(IAppSettings appSettings, IUserRepository useRepository, IWalletRepository repository) : base(appSettings)
     {
         _userRepository = useRepository;
         _repository = repository;

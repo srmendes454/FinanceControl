@@ -4,6 +4,7 @@ using FinanceControl.Infra.BaseRepository;
 using System.Threading.Tasks;
 using System;
 using System.Collections.Generic;
+using FinanceControl.Domain.Enuns;
 
 namespace FinanceControl.Application.Services.Transactions.Repository
 {
@@ -11,6 +12,8 @@ namespace FinanceControl.Application.Services.Transactions.Repository
     {
         Task<PaginatedResponse<TransactionsModel>> GetAllByPaymentId(Guid paymentId, Guid assignedId, string search, string type, int year, int month, int take, int skip);
         Task<TransactionsModel> GetById(Guid transactionId);
+        Task<double> GetTransactionSalary(string yearMonthReference);
+        Task<List<TransactionsModel>> GetTransactionByExpenseType(string yearMonthReference, List<ExpenseType> expensesType);
         Task<TransactionsModel> GetByIdAndDate(Guid transactionId, int year, int month);
         Task<List<TransactionsModel>> GetAllByCardIdAndDate(Guid cardId, int year, int month);
         Task<List<TransactionsModel>> GetTransactionsById(Guid transactionId);

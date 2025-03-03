@@ -1,5 +1,6 @@
 ﻿using FinanceControl.Application.Extensions.Paginated;
 using FinanceControl.Domain.Entities;
+using FinanceControl.Domain.Enuns;
 using FinanceControl.Infra.AppSettings;
 using FinanceControl.Infra.BaseRepository;
 using FinanceControl.Infra.Context;
@@ -135,6 +136,67 @@ namespace FinanceControl.Application.Services.Transactions.Repository
                     CreatedBy = t.CreatedBy
                 })
                 .FirstOrDefaultAsync();
+
+            return result;
+        }
+
+        /// <summary>
+        /// Obtem Transação Salarial, Provento ou Pró-Labore
+        /// </summary>
+        /// <param name="yearMonthReference"></param>
+        /// <returns></returns>
+        public async Task<double> GetTransactionSalary(string yearMonthReference)
+        {
+            var filter = Builders<TransactionsModel>.Filter
+                .Where(t => t.YearMonthReference.Equals(yearMonthReference)
+                        && (t.ExpenseType.Equals(ExpenseType.SALARY) || t.ExpenseType.Equals(ExpenseType.PRO_LABORE) || t.ExpenseType.Equals(ExpenseType.INCOME))
+                            && t.Active.Equals(true));
+
+            var sort = Builders<TransactionsModel>.Sort
+                .Ascending(x => x.ExpirationDate);
+
+            var query = await GetTransactionCollection()
+                .Aggregate()
+                .Match(filter)
+                .Sort(sort)
+                .Project(t => new TransactionsModel
+                {
+                    Value = t.Value,
+                    Repetition = t.Repetition
+                })
+                .ToListAsync();
+
+            var result = Math.Round(query.Sum(t => t.Value ?? t.Repetition.ValueInstallment), 2);
+            return result;
+        }
+
+        /// <summary>
+        /// Obtem Transação por Tipo
+        /// </summary>
+        /// <param name="yearMonthReference"></param>
+        /// <param name="expensesType"></param>
+        /// <returns></returns>
+        public async Task<List<TransactionsModel>> GetTransactionByExpenseType(string yearMonthReference, List<ExpenseType> expensesType)
+        {
+            var filter = Builders<TransactionsModel>.Filter
+                .Where(t => t.YearMonthReference.Equals(yearMonthReference)
+                        && expensesType.Contains(t.ExpenseType)
+                            && t.Active.Equals(true));
+
+            var sort = Builders<TransactionsModel>.Sort
+                .Ascending(x => x.ExpirationDate);
+
+            var result = await GetTransactionCollection()
+                .Aggregate()
+                .Match(filter)
+                .Sort(sort)
+                .Project(t => new TransactionsModel
+                {
+                    ExpenseType = t.ExpenseType,
+                    Value = t.Value,
+                    Repetition = t.Repetition
+                })
+                .ToListAsync();
 
             return result;
         }

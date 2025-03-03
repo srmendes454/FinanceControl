@@ -113,5 +113,14 @@ public enum ExpenseType
     INSTALLMENTS,
 
     [Description("Barbearia")]
-    BARBER_SHOP
+    BARBER_SHOP,
+
+    [Description("Salário")]
+    SALARY,
+
+    [Description("Pró-Labore")]
+    PRO_LABORE,
+
+    [Description("Provento")]
+    INCOME
 }
