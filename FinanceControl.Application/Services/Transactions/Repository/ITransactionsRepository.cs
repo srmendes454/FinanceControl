@@ -14,6 +14,7 @@ namespace FinanceControl.Application.Services.Transactions.Repository
         Task<TransactionsModel> GetById(Guid transactionId);
         Task<double> GetTransactionSalary(string yearMonthReference);
         Task<List<TransactionsModel>> GetTransactionByExpenseType(string yearMonthReference, List<ExpenseType> expensesType);
+        Task<List<TransactionsModel>> GetTransactionByPaymentIds(List<Guid> paymentIds, List<TransactionsType> types);
         Task<TransactionsModel> GetByIdAndDate(Guid transactionId, int year, int month);
         Task<List<TransactionsModel>> GetAllByCardIdAndDate(Guid cardId, int year, int month);
         Task<List<TransactionsModel>> GetTransactionsById(Guid transactionId);
@@ -23,6 +24,7 @@ namespace FinanceControl.Application.Services.Transactions.Repository
         Task UpdateAssigned(Guid transactionId, TransactionsModel model);
         Task UpdateAllAssigned(Guid transactionId, AssignedModel assignedModel);
         Task UpdateMove(Guid transactionId, string yearMonthReference, TransactionsModel transaction);
+        Task UpdateRedeemInvestedAmount(Guid transactionId, string yearMonthReference, double valueRemaining);
         Task<PaginatedResponse<TransactionsModel>> ListAssignedTransactions(Guid userId, string search, int take, int skip);
     }
 }

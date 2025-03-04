@@ -3,6 +3,7 @@ using FinanceControl.Application.Extensions.Utils.Email;
 using FinanceControl.Application.Services.AccountBank.Repository;
 using FinanceControl.Application.Services.BankSlip.Repository;
 using FinanceControl.Application.Services.Cards.Repository;
+using FinanceControl.Application.Services.Investment.Repository;
 using FinanceControl.Application.Services.Transactions.DTO_s.Request;
 using FinanceControl.Application.Services.Transactions.DTO_s.Response;
 using FinanceControl.Application.Services.Transactions.Repository;
@@ -11,9 +12,12 @@ using FinanceControl.Domain.Entities;
 using FinanceControl.Domain.Enuns;
 using FinanceControl.Infra.AppSettings;
 using FinanceControl.Infra.BaseService;
+using Microsoft.Win32;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography.Xml;
 using System.Threading.Tasks;
 
 namespace FinanceControl.Application.Services.Transactions.Service
@@ -27,6 +31,7 @@ namespace FinanceControl.Application.Services.Transactions.Service
         private readonly ICardRepository _cardRepository;
         private readonly IBankSlipRepository _bankSlipRepository;
         private readonly IAccountBankRepository _accountBankRepository;
+        private readonly IInvestmentRepository _investmentRepository;
         private readonly IEmail _email;
 
         #endregion
@@ -39,6 +44,7 @@ namespace FinanceControl.Application.Services.Transactions.Service
             ICardRepository cardRepository,
             IBankSlipRepository bankSlipRepository,
             IAccountBankRepository accountBankRepository,
+            IInvestmentRepository investmentRepository,
             IEmail email) : base(appSettings)
         {
             _repository = repository;
@@ -46,6 +52,7 @@ namespace FinanceControl.Application.Services.Transactions.Service
             _cardRepository = cardRepository;
             _bankSlipRepository = bankSlipRepository;
             _accountBankRepository = accountBankRepository;
+            _investmentRepository = investmentRepository;
             _email = email;
         }
 
@@ -56,6 +63,7 @@ namespace FinanceControl.Application.Services.Transactions.Service
         private const string CardNotFound = "Cartão não encontrado";
         private const string BankSlipNotFound = "Boleto Bancário não encontrado";
         private const string AccountBankNotFound = "Conta Bancária não encontrada";
+        private const string InvestmentNotFound = "Investimento não encontrado";
         private const string TransactionNotFound = "Transação não encontrada";
         private const string TransactionsNotFound = "Transações não encontradas";
         private const string Transaction = "Transação";
@@ -64,6 +72,8 @@ namespace FinanceControl.Application.Services.Transactions.Service
         private const string CashFlowNotFound = "Nenhum Fluxo de Caixa foi encontrado";
         private const string TransactionsTypeNotFound = "Nenhum Tipo de Transação foi encontrado";
         private const string TransactionEvaluated = "Transação avaliada com sucesso!";
+        private const string ValuesNotFound = "Você não tem valores disponíveis para resgatar deste Investimento!";
+        private const string LowestRedemptionValue = "O Valor que está tentando Resgatar e menor que o Valor disponível!";
 
         #endregion
 
@@ -229,6 +239,52 @@ namespace FinanceControl.Application.Services.Transactions.Service
                 await _repository.InsertOneAsync(model);
 
                 return SuccessResponse(Transaction, Message.SUCCESSFULLY_ADDED_F.GetEnumDescription());
+            }
+            catch (Exception ex)
+            {
+                return ErrorResponse(ex);
+            }
+        }
+
+        /// <summary>
+        /// Serviço para Investir um Valor
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        public async Task<ResultValue> InsertToInvestment(Guid investmentId, InvestedAmountRequest request)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (investmentId == Guid.Empty || userId == Guid.Empty || request.AccountBankId == Guid.Empty || request == null)
+                    return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
+
+                var user = await _userRepository.GetById(userId);
+                if (user == null)
+                    return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
+
+                var transactionRequest = new TransactionsInsertRequest
+                {
+                    Name = "Investimento",
+                    CashFlow = TransactionsCashFlow.EXIT.ToString(),
+                    Value = request.ValueRedeemed,
+                    Installment = false,
+                    DatePurchase = DateTime.UtcNow,
+                    ExpenseType = ExpenseType.INVESTMENT.ToString(),
+                    Type = TransactionsType.ACCOUNT_BANK.ToString()
+                };
+
+                await InsertToAccountBank(request.AccountBankId, transactionRequest);
+
+                var investment = await _investmentRepository.GetById(investmentId);
+                if (investment == null)
+                    return ErrorResponse(InvestmentNotFound);
+
+                transactionRequest.CashFlow = TransactionsCashFlow.ENTRY.ToString();
+                transactionRequest.Type = TransactionsType.INVESTMENT.ToString();
+                InsertTransactionInvestment(investment, request.ValueRedeemed, user, transactionRequest);
+
+                return SuccessResponse("Investimento", "realizado com sucesso");
             }
             catch (Exception ex)
             {
@@ -440,6 +496,68 @@ namespace FinanceControl.Application.Services.Transactions.Service
                 }
 
                 return SuccessResponse(Transaction, Message.SUCCESSFULLY_UPDATED_F.GetEnumDescription());
+            }
+            catch (Exception ex)
+            {
+                return ErrorResponse(ex);
+            }
+        }
+
+        /// <summary>
+        /// Serviço para fazer o Resgate de um Investimento
+        /// </summary>
+        /// <param name="investmentId"></param>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        public async Task<ResultValue> RedeemInvestedAmount(Guid investmentId, RedeemInvestedAmountRequest request)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (investmentId == Guid.Empty || request == null || userId == Guid.Empty)
+                    return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
+
+                var user = await _userRepository.GetById(userId);
+                if (user == null)
+                    return ErrorResponse(Message.USER_NOT_FOUND.GetEnumDescription());
+
+                var investment = await _investmentRepository.GetById(investmentId);
+                if (investment == null)
+                    return ErrorResponse(InvestmentNotFound);
+
+                var transactions = await _repository.GetTransactionByPaymentIds([investmentId], [TransactionsType.INVESTMENT]);
+                if (transactions.Count == 0)
+                    return ErrorResponse(TransactionsNotFound);
+
+                var totalEntryValue = transactions.Where(t => t.CashFlow == TransactionsCashFlow.ENTRY).Sum(t => t.Value.Value);
+                var totalExitValue = transactions.Where(t => t.CashFlow == TransactionsCashFlow.EXIT).Sum(t => t.Value.Value);
+                var amountAvailableRedemption = Math.Round(totalEntryValue - totalExitValue, 2);
+                if (amountAvailableRedemption <= 0)
+                    return ErrorResponse(ValuesNotFound);
+
+                if (!request.FullAmount && amountAvailableRedemption < request.ValueRedeemed)
+                    return ErrorResponse(LowestRedemptionValue);
+
+                var valueRedeemed = request.FullAmount ? amountAvailableRedemption : request.ValueRedeemed;
+                var transactionRequest = new TransactionsInsertRequest
+                {
+                    Name = "Resgate de Valores Investidos",
+                    CashFlow = TransactionsCashFlow.EXIT.ToString(),
+                    Value = valueRedeemed,
+                    Installment = false,
+                    DatePurchase = DateTime.UtcNow,
+                    ExpenseType = ExpenseType.INVESTMENT_RESCUE.ToString(),
+                    Type = TransactionsType.INVESTMENT.ToString()
+                };
+
+                InsertTransactionInvestment(investment, valueRedeemed, user, transactionRequest);
+
+                transactionRequest.CashFlow = TransactionsCashFlow.ENTRY.ToString();
+                transactionRequest.Type = TransactionsType.ACCOUNT_BANK.ToString();
+
+                await InsertToAccountBank(request.AccountBankId, transactionRequest);
+
+                return SuccessResponse("Resgate", "realizado com sucesso!");
             }
             catch (Exception ex)
             {
@@ -728,6 +846,26 @@ namespace FinanceControl.Application.Services.Transactions.Service
             }
 
             return transactions;
+        }
+
+        private async void InsertTransactionInvestment(InvestmentModel investment, double valueRedeemed, UserModel user, TransactionsInsertRequest request)
+        {
+            var model = new TransactionsModel(
+                user.UserId,
+                request.Name,
+                request.DatePurchase,
+                request.Installment,
+                Enum.Parse<TransactionsCashFlow>(request.CashFlow),
+                Enum.Parse<TransactionsType>(request.Type),
+                Enum.Parse<ExpenseType>(request.ExpenseType)
+            );
+
+            AssignedFor(request.AssignedId, user, model, investment.Name, model.Type.GetEnumDescription());
+            model.PaymentDetails = new PaymentDetailsModel(investment.InvestmentId, investment.Name);
+
+            model.LoadData(valueRedeemed, request.DatePurchase);
+
+            await _repository.InsertOneAsync(model);
         }
 
         #endregion

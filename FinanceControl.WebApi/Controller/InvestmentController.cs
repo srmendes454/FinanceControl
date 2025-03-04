@@ -1,5 +1,7 @@
 ﻿using FinanceControl.Application.Services.AccountBank.DTO_s.Request;
 using FinanceControl.Application.Services.AccountBank.Service;
+using FinanceControl.Application.Services.Investment.DTO_s.Request;
+using FinanceControl.Application.Services.Investment.Service;
 using FinanceControl.Infra.AppSettings;
 using FinanceControl.Infra.ControllerBase;
 using Microsoft.AspNetCore.Http;
@@ -9,17 +11,17 @@ using System.Threading.Tasks;
 
 namespace FinanceControl.Controller
 {
-    public class AccountBankController : BaseController<AccountBankController>
+    public class InvestmentController : BaseController<InvestmentController>
     {
         #region [ Fields ]
 
-        private readonly IAccountBankService _service;
+        private readonly IInvestmentService _service;
 
         #endregion
 
         #region [ Constructor ]
 
-        public AccountBankController(IAppSettings appSettings, IAccountBankService service) : base(appSettings)
+        public InvestmentController(IAppSettings appSettings, IInvestmentService service) : base(appSettings)
         {
             _service = service;
         }
@@ -29,38 +31,38 @@ namespace FinanceControl.Controller
         #region [ Public Routes ]
 
         /// <summary>
-        /// Insere uma Conta Bancária
+        /// Insere um Investimento
         /// </summary>
         /// <param name="request"></param>
         /// <returns></returns>
-        [HttpPost("/v1/account-bank")]
+        [HttpPost("/v1/investment")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<IActionResult> InsertCard([FromBody] AccountBankInsertRequest request)
+        public async Task<IActionResult> InsertCard([FromBody] InvestmentInsertRequest request)
         {
             return Ok(await _service.Insert(request));
         }
 
         /// <summary>
-        /// Obtém os dados de uma Conta Bancária
+        /// Obtém os dados de um Investimento
         /// </summary>
-        /// <param name="accountBankId"></param>
+        /// <param name="investmentId"></param>
         /// <returns></returns>
-        [HttpGet("/v1/account-bank/{accountBankId}")]
+        [HttpGet("/v1/investment/{investmentId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetById([FromRoute] Guid accountBankId)
+        public async Task<IActionResult> GetById([FromRoute] Guid investmentId)
         {
-            return Ok(await _service.GetById(accountBankId));
+            return Ok(await _service.GetById(investmentId));
         }
 
         /// <summary>
-        /// Obtém todos as Contas Bancárias por Carteira
+        /// Obtém todos os Investimentos
         /// </summary>
         /// <param name="walletId"></param>
         /// <param name="search"></param>
         /// <param name="take"></param>
         /// <param name="skip"></param>
         /// <returns></returns>
-        [HttpGet("/v1/account-bank/wallet/{walletId}")]
+        [HttpGet("/v1/investment/wallet/{walletId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAll([FromRoute] Guid walletId, [FromQuery] string search = null, [FromQuery] int take = 20, [FromQuery] int skip = 1)
         {
@@ -68,41 +70,41 @@ namespace FinanceControl.Controller
         }
 
         /// <summary>
-        /// Atualiza os dados de uma Conta Bancária
+        /// Atualiza os dados de um Investimento
         /// </summary>
-        /// <param name="accountBankId"></param>
+        /// <param name="investmentId"></param>
         /// <param name="request"></param>
         /// <returns></returns>
-        [HttpPut("/v1/account-bank/{accountBankId}")]
+        [HttpPut("/v1/investment/{investmentId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<IActionResult> Update([FromRoute] Guid accountBankId, [FromBody] AccountBankInsertRequest request)
+        public async Task<IActionResult> Update([FromRoute] Guid investmentId, [FromBody] InvestmentInsertRequest request)
         {
-            return Ok(await _service.Update(accountBankId, request));
+            return Ok(await _service.Update(investmentId, request));
         }
 
         /// <summary>
-        /// Exclui uma Conta Bancária
+        /// Exclui um Investimento
         /// </summary>
-        /// <param name="accountBankId"></param>
+        /// <param name="investmentId"></param>
         /// <returns></returns>
-        [HttpDelete("/v1/account-bank/{accountBankId}")]
+        [HttpDelete("/v1/investment/{investmentId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<IActionResult> Delete([FromRoute] Guid accountBankId)
+        public async Task<IActionResult> Delete([FromRoute] Guid investmentId)
         {
-            return Ok(await _service.Delete(accountBankId));
+            return Ok(await _service.Delete(investmentId));
         }
 
         #region [ List Enuns ]
 
         /// <summary>
-        /// Lista todos os tipos de Contas Bancárias
+        /// Lista todos os tipos de Investimentos
         /// </summary>
         /// <returns></returns>
-        [HttpGet("/v1/account-bank/type")]
+        [HttpGet("/v1/investment/type")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public IActionResult ListAccountBankTypes()
+        public IActionResult ListInvestmentTypes()
         {
-            return Ok(_service.ListAccountBankTypes());
+            return Ok(_service.ListInvestmentTypes());
         }
 
         #endregion

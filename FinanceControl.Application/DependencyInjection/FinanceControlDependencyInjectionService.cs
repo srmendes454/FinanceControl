@@ -8,6 +8,7 @@ using FinanceControl.Application.Services.User.Service;
 using FinanceControl.Application.Services.Wallet.Service;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using FinanceControl.Application.Services.Investment.Service;
 
 namespace FinanceControl.Application.DependencyInjection;
 
@@ -25,5 +26,6 @@ public static class FinanceControlDependencyInjectionService
         services.AddScoped<IAccountBankService, AccountBankService>();
         services.AddScoped<ITransactionsService, TransactionsService>();
         services.AddScoped<IDivisionService, DivisionService>();
+        services.AddScoped<IInvestmentService, InvestmentService>();
     }
 }

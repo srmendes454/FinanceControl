@@ -202,6 +202,40 @@ namespace FinanceControl.Application.Services.Transactions.Repository
         }
 
         /// <summary>
+        /// Obtem Transações por Pagamento
+        /// </summary>
+        /// <param name="paymentIds"></param>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        public async Task<List<TransactionsModel>> GetTransactionByPaymentIds(List<Guid> paymentIds, List<TransactionsType> types)
+        {
+            var filter = Builders<TransactionsModel>.Filter
+                .Where(t => paymentIds.Contains(t.PaymentDetails.Id)
+                        && types.Contains(t.Type)
+                        && t.Active.Equals(true));
+
+            var sort = Builders<TransactionsModel>.Sort
+                .Ascending(x => x.ExpirationDate);
+
+            var result = await GetTransactionCollection()
+                .Aggregate()
+                .Match(filter)
+                .Sort(sort)
+                .Project(t => new TransactionsModel
+                {
+                    TransactionId = t.TransactionId,
+                    PaymentDetails = t.PaymentDetails,
+                    Value = t.Value,
+                    Repetition = t.Repetition,
+                    YearMonthReference = t.YearMonthReference,
+                    CashFlow = t.CashFlow
+                })
+                .ToListAsync();
+
+            return result;
+        }
+
+        /// <summary>
         /// Obtem a Transação por Id e Data
         /// </summary>
         /// <param name="transactionId"></param>
@@ -402,7 +436,9 @@ namespace FinanceControl.Application.Services.Transactions.Repository
         /// <summary>
         /// Move as Transações
         /// </summary>
-        /// <param name="transactions"></param>
+        /// <param name="transactionId"></param>
+        /// <param name="yearMonthReference"></param>
+        /// <param name="transaction"></param>
         /// <returns></returns>
         public async Task UpdateMove(Guid transactionId, string yearMonthReference, TransactionsModel transaction)
         {
@@ -416,6 +452,27 @@ namespace FinanceControl.Application.Services.Transactions.Repository
             var update = Builders<TransactionsModel>.Update
                 .Set(rec => rec.ExpirationDate, transaction.ExpirationDate)
                 .Set(rec => rec.YearMonthReference, transaction.YearMonthReference)
+                .Set(p => p.UpdateDate, DateTime.UtcNow);
+
+            await UpdateOneAsync(update, filter);
+        }
+
+        /// <summary>
+        /// Atualiza os valores das Transações do tipo Investimento
+        /// </summary>
+        /// <param name="transactionId"></param>
+        /// <param name="yearMonthReference"></param>
+        /// <param name="valueRemaining"></param>
+        /// <returns></returns>
+        public async Task UpdateRedeemInvestedAmount(Guid transactionId, string yearMonthReference, double valueRemaining)
+        {
+            var filter = Builders<TransactionsModel>.Filter
+                .Where(x => x.TransactionId.Equals(transactionId)
+                        && x.YearMonthReference.Equals(yearMonthReference)
+                        && x.Active.Equals(true));
+
+            var update = Builders<TransactionsModel>.Update
+                .Set(rec => rec.Value, valueRemaining)
                 .Set(p => p.UpdateDate, DateTime.UtcNow);
 
             await UpdateOneAsync(update, filter);

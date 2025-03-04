@@ -3,6 +3,7 @@ using FinanceControl.Application.Services.BankSlip.Repository;
 using FinanceControl.Application.Services.CardBill.Repository;
 using FinanceControl.Application.Services.Cards.Repository;
 using FinanceControl.Application.Services.Division.Repository;
+using FinanceControl.Application.Services.Investment.Repository;
 using FinanceControl.Application.Services.Transactions.Repository;
 using FinanceControl.Application.Services.User.Repository;
 using FinanceControl.Application.Services.Wallet.Repository;
@@ -25,5 +26,6 @@ public static class FinanceControlDependencyInjectionRepository
         services.AddScoped<IAccountBankRepository, AccountBankRepository>();
         services.AddScoped<ITransactionsRepository, TransactionsRepository>();
         services.AddScoped<IDivisionRepository, DivisionRepository>();
+        services.AddScoped<IInvestmentRepository, InvestmentRepository>();
     }
 }

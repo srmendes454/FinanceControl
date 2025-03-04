@@ -9,19 +9,19 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace FinanceControl.Application.Services.AccountBank.Repository
+namespace FinanceControl.Application.Services.Investment.Repository
 {
-    public class AccountBankRepository : BaseRepository<AccountBankModel>, IAccountBankRepository
+    public class InvestmentRepository : BaseRepository<InvestmentModel>, IInvestmentRepository
     {
         #region [ Fields ]
 
-        public IMongoCollection<AccountBankModel> GetAccountBankCollection() => GetMongoCollection();
+        public IMongoCollection<InvestmentModel> GetInvestmentCollection() => GetMongoCollection();
 
         #endregion
 
         #region [ Constructor ]
 
-        public AccountBankRepository(IContextMongoDBDatabase mongoDb, IAppSettings appSettings) : base(mongoDb, appSettings, "AccountBank")
+        public InvestmentRepository(IContextMongoDBDatabase mongoDb, IAppSettings appSettings) : base(mongoDb, appSettings, "Investment")
         {
         }
 
@@ -30,30 +30,30 @@ namespace FinanceControl.Application.Services.AccountBank.Repository
         #region [ Public Methods ]
 
         /// <summary>
-        /// Obtem uma Conta Bancaria por Id
+        /// Obtém um Investimento por Id
         /// </summary>
-        /// <param name="accountBankId"></param>
+        /// <param name="investmentId"></param>
         /// <returns></returns>
-        public async Task<AccountBankModel> GetById(Guid accountBankId)
+        public async Task<InvestmentModel> GetById(Guid investmentId)
         {
-            var filter = Builders<AccountBankModel>.Filter
-                .Where(p => p.AccountBankId.Equals(accountBankId)
+            var filter = Builders<InvestmentModel>.Filter
+                .Where(p => p.InvestmentId.Equals(investmentId)
                             && p.Active.Equals(true));
 
-            var sort = Builders<AccountBankModel>.Sort
+            var sort = Builders<InvestmentModel>.Sort
                 .Ascending(x => x.CreationDate);
 
-            var result = await GetAccountBankCollection()
+            var result = await GetInvestmentCollection()
                 .Aggregate()
                 .Match(filter)
                 .Sort(sort)
-                .Project(p => new AccountBankModel
+                .Project(p => new InvestmentModel
                 {
-                    AccountBankId = p.AccountBankId,
+                    InvestmentId = p.InvestmentId,
                     Name = p.Name,
                     Type = p.Type,
                     Color = p.Color,
-                    Active = p.Active
+                    MonthlyProfitability = p.MonthlyProfitability
                 })
                 .FirstOrDefaultAsync();
 
@@ -61,19 +61,20 @@ namespace FinanceControl.Application.Services.AccountBank.Repository
         }
 
         /// <summary>
-        /// Obtem todos as Contas Bancárias paginado
+        /// Obtém todos os Investimentos paginados e filtrados
         /// </summary>
         /// <param name="walletId"></param>
         /// <param name="search"></param>
         /// <param name="take"></param>
         /// <param name="skip"></param>
         /// <returns></returns>
-        public async Task<PaginatedResponse<AccountBankModel>> GetAll(Guid walletId, string search, int take, int skip)
+        /// <exception cref="NotImplementedException"></exception>
+        public async Task<PaginatedResponse<InvestmentModel>> GetAll(Guid walletId, string search, int take, int skip)
         {
-            var filter = Builders<AccountBankModel>.Filter;
-            var filters = new List<FilterDefinition<AccountBankModel>>();
+            var filter = Builders<InvestmentModel>.Filter;
+            var filters = new List<FilterDefinition<InvestmentModel>>();
 
-            FilterDefinition<AccountBankModel> mainFilter;
+            FilterDefinition<InvestmentModel> mainFilter;
             mainFilter = filter.Where(p => p.Wallet.WalletId.Equals(walletId)
                                            && p.Active.Equals(true));
 
@@ -84,25 +85,25 @@ namespace FinanceControl.Application.Services.AccountBank.Repository
                 foreach (var filterDefinition in filters)
                     mainFilter &= filterDefinition;
 
-            var sort = Builders<AccountBankModel>.Sort
+            var sort = Builders<InvestmentModel>.Sort
                 .Ascending(x => x.Name);
 
-            var result = await GetAccountBankCollection()
+            var result = await GetInvestmentCollection()
                 .Aggregate()
                 .Match(mainFilter)
                 .Sort(sort)
-                .Project(p => new AccountBankModel
+                .Project(p => new InvestmentModel
                 {
-                    AccountBankId = p.AccountBankId,
+                    InvestmentId = p.InvestmentId,
                     Name = p.Name,
                     Type = p.Type,
                     Color = p.Color,
-                    Active = p.Active
+                    MonthlyProfitability = p.MonthlyProfitability
                 })
                 .ToListAsync();
 
             var records = result.Skip((skip - 1) * take).Take(take);
-            var newResult = new PaginatedResponse<AccountBankModel>
+            var newResult = new PaginatedResponse<InvestmentModel>
             {
                 Records = records.ToList(),
                 Total = result.Count
@@ -110,36 +111,38 @@ namespace FinanceControl.Application.Services.AccountBank.Repository
 
             return newResult;
         }
-
+        
         /// <summary>
-        /// Atualiza os dados de uma Conta Bancária
+        /// Atualiza os dados de um Investimento
         /// </summary>
         /// <param name="model"></param>
         /// <returns></returns>
-        public async Task Update(AccountBankModel model)
+        public async Task Update(InvestmentModel model)
         {
-            var filter = Builders<AccountBankModel>.Filter
-                .Where(p => p.AccountBankId.Equals(model.AccountBankId)
+            var filter = Builders<InvestmentModel>.Filter
+                .Where(p => p.InvestmentId.Equals(model.InvestmentId)
                             && p.Active.Equals(true));
 
-            var update = Builders<AccountBankModel>.Update
+            var update = Builders<InvestmentModel>.Update
                 .Set(p => p.Name, model.Name)
                 .Set(p => p.Color, model.Color)
                 .Set(p => p.Type, model.Type)
+                .Set(p => p.MonthlyProfitability, model.MonthlyProfitability)
                 .Set(p => p.UpdateDate, DateTime.UtcNow);
 
             await UpdateOneAsync(update, filter);
         }
 
         /// <summary>
-        /// Exclui uma Conta Bancária
+        /// Deleta um Investimento
         /// </summary>
-        /// <param name="accountBankId"></param>
+        /// <param name="investmentId"></param>
         /// <returns></returns>
-        public async Task Delete(Guid accountBankId)
+        /// <exception cref="NotImplementedException"></exception>
+        public async Task Delete(Guid investmentId)
         {
-            var filter = Builders<AccountBankModel>.Filter
-                .Where(p => p.AccountBankId.Equals(accountBankId));
+            var filter = Builders<InvestmentModel>.Filter
+                .Where(p => p.InvestmentId.Equals(investmentId));
 
             await DeleteOneAsync(filter);
         }

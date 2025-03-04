@@ -122,5 +122,8 @@ public enum ExpenseType
     PRO_LABORE,
 
     [Description("Provento")]
-    INCOME
+    INCOME,
+
+    [Description("Resgate de Investimentos")]
+    INVESTMENT_RESCUE
 }

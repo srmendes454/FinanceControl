@@ -1,7 +1,8 @@
 ﻿using FinanceControl.Application.Extensions.Paginated;
-using FinanceControl.Application.Services.AccountBank.Repository;
-using FinanceControl.Application.Services.AccountBank.DTO_s.Request;
-using FinanceControl.Application.Services.AccountBank.DTO_s.Response;
+using FinanceControl.Application.Services.Investment.DTO_s.Request;
+using FinanceControl.Application.Services.Investment.DTO_s.Response;
+using FinanceControl.Application.Services.Investment.Repository;
+using FinanceControl.Application.Services.Transactions.Repository;
 using FinanceControl.Application.Services.Wallet.Repository;
 using FinanceControl.Domain.Entities;
 using FinanceControl.Domain.Enuns;
@@ -9,18 +10,16 @@ using FinanceControl.Infra.AppSettings;
 using FinanceControl.Infra.BaseService;
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using System.Linq;
-using FinanceControl.Application.Services.Transactions.Repository;
-using FinanceControl.Application.Services.Investment.DTO_s.Response;
+using System.Threading.Tasks;
 
-namespace FinanceControl.Application.Services.AccountBank.Service
+namespace FinanceControl.Application.Services.Investment.Service
 {
-    public class AccountBankService : BaseService<AccountBankService>, IAccountBankService
+    public class InvestmentService : BaseService<InvestmentService>, IInvestmentService
     {
         #region [ Fields ]
 
-        private readonly IAccountBankRepository _repository;
+        private readonly IInvestmentRepository _repository;
         private readonly IWalletRepository _walletRepository;
         private readonly ITransactionsRepository _transactionRepository;
 
@@ -28,11 +27,11 @@ namespace FinanceControl.Application.Services.AccountBank.Service
 
         #region [ Constructor ]
 
-        public AccountBankService(IAppSettings appSettings, IAccountBankRepository repository, IWalletRepository walletRepository, ITransactionsRepository transactionRepository) : base(appSettings)
+        public InvestmentService(IAppSettings appSettings, IInvestmentRepository repository, IWalletRepository walletRepository, ITransactionsRepository transactionsRepository) : base(appSettings)
         {
             _repository = repository;
             _walletRepository = walletRepository;
-            _transactionRepository = transactionRepository;
+            _transactionRepository = transactionsRepository;
         }
 
         #endregion
@@ -40,19 +39,19 @@ namespace FinanceControl.Application.Services.AccountBank.Service
         #region [ Messages ]
 
         private const string WalletNotFound = "Carteira não encontrada";
-        private const string AccountBankNotFound = "Conta Bancária não encontrada";
-        private const string AccountBank = "Conta Bancária";
+        private const string InvestmentNotFound = "Investimento não encontrado";
+        private const string Investment = "Investimento";
 
         #endregion
 
         #region [ Public Methods ]
 
         /// <summary>
-        /// Serviço para inserir uma Conta Bancária
+        /// Serviço para Inserir um Investimento
         /// </summary>
         /// <param name="request"></param>
         /// <returns></returns>
-        public async Task<ResultValue> Insert(AccountBankInsertRequest request)
+        public async Task<ResultValue> Insert(InvestmentInsertRequest request)
         {
             try
             {
@@ -64,11 +63,11 @@ namespace FinanceControl.Application.Services.AccountBank.Service
                 if (wallet == null)
                     return ErrorResponse(WalletNotFound);
 
-                var model = new AccountBankModel(userId, request.Name, Enum.Parse<AccountBankType>(request.Type), request.Color, new AccountBankWalletModel(wallet.WalletId, wallet.Name));
+                var model = new InvestmentModel(userId, request.Name, request.Color, request.MonthlyProfitability, Enum.Parse<InvestmentType>(request.Type), wallet.WalletId, wallet.Name);
 
                 await _repository.InsertOneAsync(model);
 
-                return SuccessResponse(AccountBank, Message.SUCCESSFULLY_ADDED_F.GetEnumDescription());
+                return SuccessResponse(Investment, Message.SUCCESSFULLY_ADDED_M.GetEnumDescription());
             }
             catch (Exception ex)
             {
@@ -77,23 +76,22 @@ namespace FinanceControl.Application.Services.AccountBank.Service
         }
 
         /// <summary>
-        /// Serviço para Obter uma Conta Bancária
+        /// Serviço para Obter um Investimento por Id
         /// </summary>
-        /// <param name="accountBankId"></param>
+        /// <param name="investmentId"></param>
         /// <returns></returns>
-        public async Task<ResultValue> GetById(Guid accountBankId)
+        public async Task<ResultValue> GetById(Guid investmentId)
         {
             try
             {
-                var userId = GetCurrentUserId();
-                if (accountBankId == Guid.Empty || userId == Guid.Empty)
+                if (investmentId == Guid.Empty)
                     return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-                var record = await _repository.GetById(accountBankId);
+                var record = await _repository.GetById(investmentId);
                 if (record == null)
-                    return ErrorResponse(AccountBankNotFound);
+                    return ErrorResponse(InvestmentNotFound);
 
-                var result = _mapper.Map<AccountBankResponse>(record);
+                var result = _mapper.Map<InvestmentResponse>(record);
 
                 return SuccessResponse(result);
             }
@@ -104,7 +102,7 @@ namespace FinanceControl.Application.Services.AccountBank.Service
         }
 
         /// <summary>
-        /// Serviço para Obter todas as Contas Bancárias
+        /// Serviço para Obter todos os Serviços da Carteira Paginado e Filtrado
         /// </summary>
         /// <param name="walletId"></param>
         /// <param name="search"></param>
@@ -120,11 +118,11 @@ namespace FinanceControl.Application.Services.AccountBank.Service
 
                 var list = await _repository.GetAll(walletId, search, take, skip);
                 if (list == null)
-                    return SuccessResponse(new PaginatedResponse<AccountBankAllResponse> { Records = new List<AccountBankAllResponse>() });
+                    return SuccessResponse(new PaginatedResponse<InvestmentAllResponse> { Records = new List<InvestmentAllResponse>() });
 
-                var accountBankIds = list.Records.Select(x => x.AccountBankId).ToList();
-                var types = new List<TransactionsType> { TransactionsType.ACCOUNT_BANK, TransactionsType.DEBIT_CARD, TransactionsType.PIX, TransactionsType.BANK_TRANSFER };
-                var transactions = await _transactionRepository.GetTransactionByPaymentIds(accountBankIds, types);
+                var investmentIds = list.Records.Select(x => x.InvestmentId).ToList();
+                var types = new List<TransactionsType> { TransactionsType.INVESTMENT };
+                var transactions = await _transactionRepository.GetTransactionByPaymentIds(investmentIds, types);
 
                 var transactionsGroup = transactions.GroupBy(x => x.PaymentDetails.Id).ToList();
                 var sum = transactionsGroup.Select(x => new
@@ -136,20 +134,20 @@ namespace FinanceControl.Application.Services.AccountBank.Service
 
                 var record = list.Records.Select(i =>
                 {
-                    var totalEntryValue = sum?.FirstOrDefault(x => x.PaymentId.Equals(i.AccountBankId))?.TotalEntryValue ?? 0;
-                    var totalExitValue = sum?.FirstOrDefault(x => x.PaymentId.Equals(i.AccountBankId))?.TotalExitValue ?? 0;
-                    var amountDisponible = Math.Round(totalEntryValue - totalExitValue, 2);
-                    return new AccountBankAllResponse
+                    var totalEntryValue = sum?.FirstOrDefault(x => x.PaymentId.Equals(i.InvestmentId))?.TotalEntryValue ?? 0;
+                    var totalExitValue = sum?.FirstOrDefault(x => x.PaymentId.Equals(i.InvestmentId))?.TotalExitValue ?? 0;
+                    var amountInvested = Math.Round(totalEntryValue - totalExitValue, 2);
+                    return new InvestmentAllResponse
                     {
-                        AccountBankId = i.AccountBankId,
+                        InvestmentId = i.InvestmentId,
                         Name = i.Name,
                         Color = i.Color,
                         Type = i.Type.GetEnumDescription(),
-                        AmountDisponible = amountDisponible
+                        AmountInvested = Math.Round(amountInvested + (amountInvested * (i.MonthlyProfitability / 100)), 2)
                     };
                 });
 
-                var result = new PaginatedResponse<AccountBankAllResponse>
+                var result = new PaginatedResponse<InvestmentAllResponse>
                 {
                     Records = [.. record],
                     Total = list.Total
@@ -164,26 +162,26 @@ namespace FinanceControl.Application.Services.AccountBank.Service
         }
 
         /// <summary>
-        /// Serviço para atualizar os dados de uma Conta Bancária
+        /// Serviço para Atualizar um Investimento
         /// </summary>
-        /// <param name="accountBankId"></param>
+        /// <param name="investmentId"></param>
         /// <param name="request"></param>
         /// <returns></returns>
-        public async Task<ResultValue> Update(Guid accountBankId, AccountBankInsertRequest request)
+        public async Task<ResultValue> Update(Guid investmentId, InvestmentInsertRequest request)
         {
             try
             {
-                if (request == null || accountBankId == Guid.Empty)
+                if (request == null || investmentId == Guid.Empty)
                     return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-                var model = await _repository.GetById(accountBankId);
+                var model = await _repository.GetById(investmentId);
                 if (model == null)
-                    return ErrorResponse(AccountBankNotFound);
+                    return ErrorResponse(InvestmentNotFound);
 
-                model.Update(request.Name, Enum.Parse<AccountBankType>(request.Type), request.Color);
+                model.Update(request.Name, request.Color, request.MonthlyProfitability, Enum.Parse<InvestmentType>(request.Type));
                 await _repository.Update(model);
 
-                return SuccessResponse(AccountBank, Message.SUCCESSFULLY_UPDATED_F.GetEnumDescription());
+                return SuccessResponse(Investment, Message.SUCCESSFULLY_UPDATED_M.GetEnumDescription());
             }
             catch (Exception ex)
             {
@@ -192,20 +190,20 @@ namespace FinanceControl.Application.Services.AccountBank.Service
         }
 
         /// <summary>
-        /// Serviço para Excluir uma Conta Bancária
+        /// Serviço para Deletar um Investimento
         /// </summary>
-        /// <param name="accountBankId"></param>
+        /// <param name="investmentId"></param>
         /// <returns></returns>
-        public async Task<ResultValue> Delete(Guid accountBankId)
+        public async Task<ResultValue> Delete(Guid investmentId)
         {
             try
             {
-                if (accountBankId == Guid.Empty)
+                if (investmentId == Guid.Empty)
                     return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-                await _repository.Delete(accountBankId);
+                await _repository.Delete(investmentId);
 
-                return SuccessResponse(AccountBank, Message.SUCCESSFULLY_DELETED_F.GetEnumDescription());
+                return SuccessResponse(Investment, Message.SUCCESSFULLY_DELETED_M.GetEnumDescription());
             }
             catch (Exception ex)
             {
@@ -213,21 +211,17 @@ namespace FinanceControl.Application.Services.AccountBank.Service
             }
         }
 
-        #endregion
-
-        #region [ List Enuns ]
-
         /// <summary>
-        /// Listagem do Tipos de Contas Bancárias
+        /// Serviço para Listar os Tipos de Investimentos
         /// </summary>
         /// <returns></returns>
-        public ResultValue ListAccountBankTypes()
+        public ResultValue ListInvestmentTypes()
         {
             try
             {
-                var result = Enum.GetValues<AccountBankType>().GetEnumDescriptionAtributte();
+                var result = Enum.GetValues<InvestmentType>().GetEnumDescriptionAtributte();
                 if (result == null || result.Count <= 0)
-                    return ErrorResponse("Tipos de Conta Bancária não encontradas!");
+                    return ErrorResponse("Tipos de Investimentos não encontrados!");
 
                 return SuccessResponse(result);
             }
@@ -236,10 +230,6 @@ namespace FinanceControl.Application.Services.AccountBank.Service
                 return ErrorResponse(ex);
             }
         }
-
-        #endregion
-
-        #region [ Private Methods ]
 
         #endregion
     }

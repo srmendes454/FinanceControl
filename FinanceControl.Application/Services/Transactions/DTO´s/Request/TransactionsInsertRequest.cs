@@ -29,4 +29,17 @@ namespace FinanceControl.Application.Services.Transactions.DTO_s.Request
         public Guid CardId { get; set; }
         public bool Approved { get; set; }
     }
+
+    public class InvestedAmountRequest
+    {
+        public Guid AccountBankId { get; set; }
+        public double ValueRedeemed { get; set; }
+    }
+
+    public class RedeemInvestedAmountRequest
+    {
+        public Guid AccountBankId { get; set; }
+        public bool FullAmount { get; set; }
+        public double ValueRedeemed { get; set; }
+    }
 }

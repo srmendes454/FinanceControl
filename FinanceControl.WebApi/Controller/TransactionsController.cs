@@ -53,7 +53,7 @@ public class TransactionsController : BaseController<TransactionsController>
     }
 
     /// <summary>
-    /// Insere uma Transação por Boleto
+    /// Insere uma Transação por Conta Bancária
     /// </summary>
     /// <param name="request"></param>
     /// <returns></returns>
@@ -62,6 +62,19 @@ public class TransactionsController : BaseController<TransactionsController>
     public async Task<IActionResult> InsertToAccountBank([FromRoute] Guid accountBankId, [FromBody] TransactionsInsertRequest request)
     {
         return Ok(await _service.InsertToAccountBank(accountBankId, request));
+    }
+
+    /// <summary>
+    /// Investe uma Valor com Saida da Conta Bancária
+    /// </summary>
+    /// <param name="investmentId"></param>
+    /// <param name="request"></param>
+    /// <returns></returns>
+    [HttpPost("/v1/transaction/investment/{investmentId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> InsertToInvestment([FromRoute] Guid investmentId, [FromBody] InvestedAmountRequest request)
+    {
+        return Ok(await _service.InsertToInvestment(investmentId, request));
     }
 
     /// <summary>
@@ -107,9 +120,21 @@ public class TransactionsController : BaseController<TransactionsController>
     /// <returns></returns>
     [HttpPut("/v1/transaction/{transactionId}/move")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> Update([FromRoute] Guid transactionId, [FromQuery] bool next)
+    public async Task<IActionResult> MoveTransaction([FromRoute] Guid transactionId, [FromQuery] bool next)
     {
         return Ok(await _service.MoveTransaction(transactionId, next));
+    }
+
+    /// <summary>
+    /// Resgata valores investidos
+    /// </summary>
+    /// <param name="investmentId"></param>
+    /// <returns></returns>
+    [HttpPut("/v1/transaction/investment/{investmentId}/rescue")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> RedeemInvestedAmount([FromRoute] Guid investmentId, [FromBody] RedeemInvestedAmountRequest request)
+    {
+        return Ok(await _service.RedeemInvestedAmount(investmentId, request));
     }
 
     /// <summary>
