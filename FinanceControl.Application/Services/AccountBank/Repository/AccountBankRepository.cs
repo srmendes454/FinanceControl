@@ -4,25 +4,24 @@ using FinanceControl.Infra.AppSettings;
 using FinanceControl.Infra.BaseRepository;
 using FinanceControl.Infra.Context;
 using MongoDB.Driver;
-using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace FinanceControl.Application.Services.Pix.Repository
+namespace FinanceControl.Application.Services.AccountBank.Repository
 {
-    public class PixRepository : BaseRepository<PixModel>, IPixRepository
+    public class AccountBankRepository : BaseRepository<AccountBankModel>, IAccountBankRepository
     {
         #region [ Fields ]
 
-        public IMongoCollection<PixModel> GetPixCollection() => GetMongoCollection();
+        public IMongoCollection<AccountBankModel> GetAccountBankCollection() => GetMongoCollection();
 
         #endregion
 
         #region [ Constructor ]
 
-        public PixRepository(IContextMongoDBDatabase mongoDb, IAppSettings appSettings) : base(mongoDb, appSettings, "Pix")
+        public AccountBankRepository(IContextMongoDBDatabase mongoDb, IAppSettings appSettings) : base(mongoDb, appSettings, "AccountBank")
         {
         }
 
@@ -31,29 +30,27 @@ namespace FinanceControl.Application.Services.Pix.Repository
         #region [ Public Methods ]
 
         /// <summary>
-        /// Obtem um Pix por Id
+        /// Obtem uma Conta Bancaria por Id
         /// </summary>
-        /// <param name="pixId"></param>
-        /// <param name="walletId"></param>
+        /// <param name="accountBankId"></param>
         /// <returns></returns>
-        public async Task<PixModel> GetById(Guid pixId)
+        public async Task<AccountBankModel> GetById(Guid accountBankId)
         {
-            var filter = Builders<PixModel>.Filter
-                .Where(p => p.PixId.Equals(pixId)
+            var filter = Builders<AccountBankModel>.Filter
+                .Where(p => p.AccountBankId.Equals(accountBankId)
                             && p.Active.Equals(true));
 
-            var sort = Builders<PixModel>.Sort
+            var sort = Builders<AccountBankModel>.Sort
                 .Ascending(x => x.CreationDate);
 
-            var result = await GetPixCollection()
+            var result = await GetAccountBankCollection()
                 .Aggregate()
                 .Match(filter)
                 .Sort(sort)
-                .Project(p => new PixModel
+                .Project(p => new AccountBankModel
                 {
-                    PixId = p.PixId,
+                    AccountBankId = p.AccountBankId,
                     Name = p.Name,
-                    LinkedAccount = p.LinkedAccount,
                     Type = p.Type,
                     Color = p.Color,
                     Active = p.Active
@@ -64,19 +61,19 @@ namespace FinanceControl.Application.Services.Pix.Repository
         }
 
         /// <summary>
-        /// Obtem todos os Pixs paginado
+        /// Obtem todos as Contas Bancárias paginado
         /// </summary>
         /// <param name="walletId"></param>
         /// <param name="search"></param>
         /// <param name="take"></param>
         /// <param name="skip"></param>
         /// <returns></returns>
-        public async Task<PaginatedResponse<PixModel>> GetAll(Guid walletId, string search, int take, int skip)
+        public async Task<PaginatedResponse<AccountBankModel>> GetAll(Guid walletId, string search, int take, int skip)
         {
-            var filter = Builders<PixModel>.Filter;
-            var filters = new List<FilterDefinition<PixModel>>();
+            var filter = Builders<AccountBankModel>.Filter;
+            var filters = new List<FilterDefinition<AccountBankModel>>();
 
-            FilterDefinition<PixModel> mainFilter;
+            FilterDefinition<AccountBankModel> mainFilter;
             mainFilter = filter.Where(p => p.Wallet.WalletId.Equals(walletId)
                                            && p.Active.Equals(true));
 
@@ -87,18 +84,17 @@ namespace FinanceControl.Application.Services.Pix.Repository
                 foreach (var filterDefinition in filters)
                     mainFilter &= filterDefinition;
 
-            var sort = Builders<PixModel>.Sort
+            var sort = Builders<AccountBankModel>.Sort
                 .Ascending(x => x.Name);
 
-            var result = await GetPixCollection()
+            var result = await GetAccountBankCollection()
                 .Aggregate()
                 .Match(mainFilter)
                 .Sort(sort)
-                .Project(p => new PixModel
+                .Project(p => new AccountBankModel
                 {
-                    PixId = p.PixId,
+                    AccountBankId = p.AccountBankId,
                     Name = p.Name,
-                    LinkedAccount = p.LinkedAccount,
                     Type = p.Type,
                     Color = p.Color,
                     Active = p.Active
@@ -106,7 +102,7 @@ namespace FinanceControl.Application.Services.Pix.Repository
                 .ToListAsync();
 
             var records = result.Skip((skip - 1) * take).Take(take);
-            var newResult = new PaginatedResponse<PixModel>
+            var newResult = new PaginatedResponse<AccountBankModel>
             {
                 Records = records.ToList(),
                 Total = result.Count
@@ -120,31 +116,30 @@ namespace FinanceControl.Application.Services.Pix.Repository
         /// </summary>
         /// <param name="model"></param>
         /// <returns></returns>
-        public async Task Update(PixModel model)
+        public async Task Update(AccountBankModel model)
         {
-            var filter = Builders<PixModel>.Filter
-                .Where(p => p.PixId.Equals(model.PixId)
+            var filter = Builders<AccountBankModel>.Filter
+                .Where(p => p.AccountBankId.Equals(model.AccountBankId)
                             && p.Active.Equals(true));
 
-            var update = Builders<PixModel>.Update
+            var update = Builders<AccountBankModel>.Update
                 .Set(p => p.Name, model.Name)
                 .Set(p => p.Color, model.Color)
                 .Set(p => p.Type, model.Type)
-                .Set(p => p.LinkedAccount, model.LinkedAccount)
                 .Set(p => p.UpdateDate, DateTime.UtcNow);
 
             await UpdateOneAsync(update, filter);
         }
 
         /// <summary>
-        /// Exclui um Pix
+        /// Exclui uma Conta Bancária
         /// </summary>
-        /// <param name="pixId"></param>
+        /// <param name="accountBankId"></param>
         /// <returns></returns>
-        public async Task Delete(Guid pixId)
+        public async Task Delete(Guid accountBankId)
         {
-            var filter = Builders<PixModel>.Filter
-                .Where(p => p.PixId.Equals(pixId));
+            var filter = Builders<AccountBankModel>.Filter
+                .Where(p => p.AccountBankId.Equals(accountBankId));
 
             await DeleteOneAsync(filter);
         }

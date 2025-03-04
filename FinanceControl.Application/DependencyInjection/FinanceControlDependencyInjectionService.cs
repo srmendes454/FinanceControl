@@ -2,7 +2,7 @@
 using FinanceControl.Application.Services.CardBill.Service;
 using FinanceControl.Application.Services.Cards.Service;
 using FinanceControl.Application.Services.Division.Service;
-using FinanceControl.Application.Services.Pix.Service;
+using FinanceControl.Application.Services.AccountBank.Service;
 using FinanceControl.Application.Services.Transactions.Service;
 using FinanceControl.Application.Services.User.Service;
 using FinanceControl.Application.Services.Wallet.Service;
@@ -22,7 +22,7 @@ public static class FinanceControlDependencyInjectionService
         services.AddScoped<ICardService, CardService>();
         services.AddScoped<ICardBillService, CardBillService>();
         services.AddScoped<IBankSlipService, BankSlipService>();
-        services.AddScoped<IPixService, PixService>();
+        services.AddScoped<IAccountBankService, AccountBankService>();
         services.AddScoped<ITransactionsService, TransactionsService>();
         services.AddScoped<IDivisionService, DivisionService>();
     }

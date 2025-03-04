@@ -1,13 +1,13 @@
 ﻿using AutoMapper;
-using FinanceControl.Application.Services.Pix.DTO_s.Response;
+using FinanceControl.Application.Services.AccountBank.DTO_s.Response;
 using FinanceControl.Domain.Entities;
 using FinanceControl.Domain.Enuns;
 
-namespace FinanceControl.Application.Services.Pix.Mapper
+namespace FinanceControl.Application.Services.AccountBank.Mapper
 {
-    public class PixMapper : Profile
+    public class AccountBankMapper : Profile
     {
-        public PixMapper()
+        public AccountBankMapper()
         {
             #region [ Request ]
 
@@ -15,7 +15,7 @@ namespace FinanceControl.Application.Services.Pix.Mapper
 
             #region [ Response ]
 
-            CreateMap<PixModel, PixResponse>()
+            CreateMap<AccountBankModel, AccountBankResponse>()
                 .ForPath(dest => dest.Type, src => src.MapFrom(x => x.Type.GetEnumDescription()));
 
             #endregion

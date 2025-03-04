@@ -1,7 +1,9 @@
 ﻿using FinanceControl.Domain.Enuns;
+using Microsoft.VisualBasic;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Runtime.Serialization;
 
@@ -98,6 +100,108 @@ namespace FinanceControl.Domain.Entities
             CashFlow = cashFlow;
             ExpenseType = expenseType;
             UpdateDate = DateTime.Now;
+        }
+
+        public void LoadData(double value, DateTime dateExpiration)
+        {
+            Value = value;
+            ExpirationDate = dateExpiration;
+            YearMonthReference = dateExpiration.ToString("yyyy/MM");
+        }
+
+        public void LoadData(double value, DateTime dateExpiration, int closingDay)
+        {
+            if (DatePurchase.Day < closingDay)
+            {
+                Value = value;
+                ExpirationDate = dateExpiration;
+                YearMonthReference = ExpirationDate.ToString("yyyy/MM");
+            }
+            else
+            {
+                Value = value;
+                ExpirationDate = dateExpiration.AddMonths(1);
+                YearMonthReference = ExpirationDate.ToString("yyyy/MM");
+            }
+        }
+
+        public TransactionsModel CopyFull(DateTime dateExpiration, int iteration = 0, int currentInstallment = 0)
+        {
+            var result = new TransactionsModel
+            {
+                TransactionId = TransactionId,
+                Name = Name,
+                Active = Active,
+                CashFlow = CashFlow,
+                CreatedBy = CreatedBy,
+                CreationDate = CreationDate,
+                DatePurchase = DatePurchase,
+                ExpenseType = ExpenseType,
+                Installment = Installment,
+                PaymentDetails = PaymentDetails,
+                Assigned = Assigned,
+                Type = Type,
+                Value = Value,
+                ExpirationDate = dateExpiration.AddMonths(iteration),
+                YearMonthReference = dateExpiration.AddMonths(iteration).ToString("yyyy/MM"),
+                Repetition = Installment ? new RepetitionModel(Repetition.NumberInstallments, currentInstallment, Repetition.ValueInstallment) : null
+            };
+
+            return result;
+        }
+
+        public List<TransactionsModel> AddRepetitionCard(int quantityInstallment, int currentInstallment, int closingDay, int expirationDay)
+        {
+            var iteration = 0;
+            var dateExpiration = new DateTime(DatePurchase.Year, DatePurchase.Month, expirationDay);
+
+            var transactions = new List<TransactionsModel>();
+            if (DatePurchase.Day < closingDay)
+            {
+                while (currentInstallment <= quantityInstallment)
+                {
+                    transactions.Add(CopyFull(dateExpiration, iteration, currentInstallment++));
+                    iteration++;
+                }
+            }
+            else
+            {
+                iteration = 1;
+                while (currentInstallment <= quantityInstallment)
+                {
+                    transactions.Add(CopyFull(dateExpiration, iteration, currentInstallment++));
+                    iteration++;
+                }
+            }
+
+            return transactions;
+        }
+
+        public List<TransactionsModel> AddRepetitionBankSlip(int quantityInstallment, int currentInstallment, int expirationDay)
+        {
+            var iteration = 0;
+            var dateExpiration = new DateTime(DatePurchase.Year, DatePurchase.Month, expirationDay);
+
+            var transactions = new List<TransactionsModel>();
+            if (DatePurchase.Day <= expirationDay)
+            {
+                while (currentInstallment <= quantityInstallment)
+                {
+                    transactions.Add(CopyFull(dateExpiration, iteration, currentInstallment++));
+                    iteration++;
+                }
+            }
+            else
+            {
+                iteration = 1;
+                while (currentInstallment <= quantityInstallment)
+                {
+                    transactions.Add(CopyFull(dateExpiration, iteration, currentInstallment++));
+                    iteration++;
+                }
+            }
+
+            return transactions;
         }
 
         #endregion

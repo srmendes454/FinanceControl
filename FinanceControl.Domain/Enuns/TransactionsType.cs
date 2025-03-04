@@ -16,6 +16,9 @@ public enum TransactionsType
     [Description("PIX")]
     PIX,
 
+    [Description("Conta Bancária")]
+    ACCOUNT_BANK,
+
     [Description("TED")]
     BANK_TRANSFER,
 

@@ -1,9 +1,8 @@
 ﻿using FinanceControl.Application.Extensions.Paginated;
 using FinanceControl.Application.Extensions.Utils.Email;
-using FinanceControl.Application.Extensions.Utils.Repetition;
+using FinanceControl.Application.Services.AccountBank.Repository;
 using FinanceControl.Application.Services.BankSlip.Repository;
 using FinanceControl.Application.Services.Cards.Repository;
-using FinanceControl.Application.Services.Pix.Repository;
 using FinanceControl.Application.Services.Transactions.DTO_s.Request;
 using FinanceControl.Application.Services.Transactions.DTO_s.Response;
 using FinanceControl.Application.Services.Transactions.Repository;
@@ -27,9 +26,8 @@ namespace FinanceControl.Application.Services.Transactions.Service
         private readonly IUserRepository _userRepository;
         private readonly ICardRepository _cardRepository;
         private readonly IBankSlipRepository _bankSlipRepository;
-        private readonly IPixRepository _pixRepository;
+        private readonly IAccountBankRepository _accountBankRepository;
         private readonly IEmail _email;
-        private readonly IAddRepetition _addRepetition;
 
         #endregion
 
@@ -40,17 +38,15 @@ namespace FinanceControl.Application.Services.Transactions.Service
             IUserRepository userRepository,
             ICardRepository cardRepository,
             IBankSlipRepository bankSlipRepository,
-            IPixRepository pixRepository,
-            IEmail email, 
-            IAddRepetition addRepetition) : base(appSettings)
+            IAccountBankRepository accountBankRepository,
+            IEmail email) : base(appSettings)
         {
             _repository = repository;
             _userRepository = userRepository;
             _cardRepository = cardRepository;
             _bankSlipRepository = bankSlipRepository;
-            _pixRepository = pixRepository;
+            _accountBankRepository = accountBankRepository;
             _email = email;
-            _addRepetition = addRepetition;
         }
 
         #endregion
@@ -59,6 +55,7 @@ namespace FinanceControl.Application.Services.Transactions.Service
 
         private const string CardNotFound = "Cartão não encontrado";
         private const string BankSlipNotFound = "Boleto Bancário não encontrado";
+        private const string AccountBankNotFound = "Conta Bancária não encontrada";
         private const string TransactionNotFound = "Transação não encontrada";
         private const string TransactionsNotFound = "Transações não encontradas";
         private const string Transaction = "Transação";
@@ -94,8 +91,8 @@ namespace FinanceControl.Application.Services.Transactions.Service
                     request.Name,
                     request.DatePurchase,
                     request.Installment,
-                    Enum.Parse<TransactionsCashFlow>(request.CashFlow),
-                    Enum.Parse<TransactionsType>(request.Type),
+                    TransactionsCashFlow.EXIT,
+                    TransactionsType.CREDIT_CARD,
                     Enum.Parse<ExpenseType>(request.ExpenseType)
                 );
 
@@ -104,7 +101,6 @@ namespace FinanceControl.Application.Services.Transactions.Service
                     return ErrorResponse(CardNotFound);
 
                 AssignedFor(request.AssignedId, user, model, card.Name, card.Type.GetEnumDescription());
-
                 model.PaymentDetails = new PaymentDetailsModel(card.CardId, card.Name);
 
                 if (model.Installment)
@@ -112,34 +108,15 @@ namespace FinanceControl.Application.Services.Transactions.Service
                     model.Repetition = new RepetitionModel(request.Repetition.QuantityInstallment, request.Repetition.CurrentInstallment, request.Repetition.ValueInstallment);
 
                     var transactions = new List<TransactionsModel>();
-                    if (model.Type == TransactionsType.CREDIT_CARD)
-                    {
-                        var transactionsRepetition = _addRepetition.AddRepetitionCard(request.Repetition.QuantityInstallment, request.Repetition.CurrentInstallment, card.ClosingDay, card.ExpirationDay, model);
-                        transactions.AddRange(transactionsRepetition);
-                    }
-
-                    if (model.Type == TransactionsType.DEBIT_CARD)
-                    {
-                        var transactionsRepetition = _addRepetition.AddRepetitionCardDebitAndPix(request.Repetition.QuantityInstallment, request.Repetition.CurrentInstallment, model);
-                        transactions.AddRange(transactionsRepetition);
-                    }
+                    var transactionsRepetition = model.AddRepetitionCard(request.Repetition.QuantityInstallment, request.Repetition.CurrentInstallment, card.ClosingDay, card.ExpirationDay);
+                    transactions.AddRange(transactionsRepetition);
 
                     await _repository.InsertManyAsync(transactions);
                 }
                 else
                 {
-                    model.Value = request.Value;
-                    var dateClosing = new DateTime(model.DatePurchase.Year, model.DatePurchase.Month, card.ClosingDay);
-                    if (model.DatePurchase < dateClosing)
-                    {
-                        model.ExpirationDate = dateClosing;
-                        model.YearMonthReference = model.ExpirationDate.ToString("yyyy/MM");
-                    }
-                    else
-                    {
-                        model.ExpirationDate = dateClosing.AddMonths(1);
-                        model.YearMonthReference = model.ExpirationDate.ToString("yyyy/MM");
-                    }
+                    var expirationDate = new DateTime(model.DatePurchase.Year, model.DatePurchase.Month, card.ExpirationDay);
+                    model.LoadData(request.Value.Value, expirationDate, card.ClosingDay);
                     
                     await _repository.InsertOneAsync(model);
                 }
@@ -174,8 +151,8 @@ namespace FinanceControl.Application.Services.Transactions.Service
                     request.Name,
                     request.DatePurchase,
                     request.Installment,
-                    Enum.Parse<TransactionsCashFlow>(request.CashFlow),
-                    Enum.Parse<TransactionsType>(request.Type),
+                    TransactionsCashFlow.EXIT,
+                    TransactionsType.BANK_SLIP,
                     Enum.Parse<ExpenseType>(request.ExpenseType)
                 );
 
@@ -192,14 +169,16 @@ namespace FinanceControl.Application.Services.Transactions.Service
                     model.Repetition = new RepetitionModel(request.Repetition.QuantityInstallment, request.Repetition.CurrentInstallment, request.Repetition.ValueInstallment);
 
                     var transactions = new List<TransactionsModel>();
-                    var transactionsRepetition = _addRepetition.AddRepetitionBankSlip(request.Repetition.QuantityInstallment, request.Repetition.CurrentInstallment, bankSlip.ExpirationDay, model);
+                    var transactionsRepetition = model.AddRepetitionBankSlip(request.Repetition.QuantityInstallment, request.Repetition.CurrentInstallment, bankSlip.ExpirationDay);
                     transactions.AddRange(transactionsRepetition);
 
                     await _repository.InsertManyAsync(transactions);
                 }
                 else
                 {
-                    model.Value = request.Value;
+                    var expirationDate = new DateTime(model.DatePurchase.Year, model.DatePurchase.Month, bankSlip.ExpirationDay);
+                    model.LoadData(request.Value.Value, expirationDate);
+
                     await _repository.InsertOneAsync(model);
                 }
 
@@ -212,16 +191,16 @@ namespace FinanceControl.Application.Services.Transactions.Service
         }
 
         /// <summary>
-        /// Serviço para inserir Transação por Pix
+        /// Serviço para inserir Transação por Conta Bancária
         /// </summary>
         /// <param name="request"></param>
         /// <returns></returns>
-        public async Task<ResultValue> InsertToPix(Guid pixId, TransactionsInsertRequest request)
+        public async Task<ResultValue> InsertToAccountBank(Guid accountBankId, TransactionsInsertRequest request)
         {
             try
             {
                 var userId = GetCurrentUserId();
-                if (pixId == Guid.Empty || userId == Guid.Empty || request == null)
+                if (accountBankId == Guid.Empty || userId == Guid.Empty || request == null)
                     return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
                 var user = await _userRepository.GetById(userId);
@@ -238,32 +217,16 @@ namespace FinanceControl.Application.Services.Transactions.Service
                     Enum.Parse<ExpenseType>(request.ExpenseType)
                 );
 
-                var pix = await _pixRepository.GetById(pixId);
-                if (pix == null)
-                    return ErrorResponse(BankSlipNotFound);
+                var accountBank = await _accountBankRepository.GetById(accountBankId);
+                if (accountBank == null)
+                    return ErrorResponse(AccountBankNotFound);
 
-                AssignedFor(request.AssignedId, user, model, pix.Name, model.Type.GetEnumDescription());
+                AssignedFor(request.AssignedId, user, model, accountBank.Name, model.Type.GetEnumDescription());
+                model.PaymentDetails = new PaymentDetailsModel(accountBank.AccountBankId, accountBank.Name);
 
-                model.PaymentDetails = new PaymentDetailsModel(pix.PixId, pix.Name);
+                model.LoadData(request.Value.Value, request.DatePurchase);
 
-                if (model.Installment)
-                {
-                    model.Repetition = new RepetitionModel(request.Repetition.QuantityInstallment, request.Repetition.CurrentInstallment, request.Repetition.ValueInstallment);
-
-                    var transactions = new List<TransactionsModel>();
-                    var transactionsRepetition = _addRepetition.AddRepetitionCardDebitAndPix(request.Repetition.QuantityInstallment, request.Repetition.CurrentInstallment, model);
-                    transactions.AddRange(transactionsRepetition);
-
-                    await _repository.InsertManyAsync(transactions);
-                }
-                else
-                {
-                    model.Value = request.Value;
-                    model.ExpirationDate = request.DatePurchase != default ? request.DatePurchase : DateTime.UtcNow;
-                    model.YearMonthReference = model.ExpirationDate.ToString("yyyy/MM");
-
-                    await _repository.InsertOneAsync(model);
-                }
+                await _repository.InsertOneAsync(model);
 
                 return SuccessResponse(Transaction, Message.SUCCESSFULLY_ADDED_F.GetEnumDescription());
             }

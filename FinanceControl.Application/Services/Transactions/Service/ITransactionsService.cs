@@ -9,7 +9,7 @@ namespace FinanceControl.Application.Services.Transactions.Service
     {
         Task<ResultValue> InsertToCard(Guid cardId, TransactionsInsertRequest request);
         Task<ResultValue> InsertToBankSlip(Guid bankSlipId, TransactionsInsertRequest request);
-        Task<ResultValue> InsertToPix(Guid pixId, TransactionsInsertRequest request);
+        Task<ResultValue> InsertToAccountBank(Guid accountBankId, TransactionsInsertRequest request);
         Task<ResultValue> GetAllByPaymentId(Guid paymentId, Guid assignedId, string search, string type, int year, int month, int take, int skip);
         Task<ResultValue> GetByIdAndDate(Guid transactionId, int year, int month);
         Task<ResultValue> Update(Guid transactionId, int year, int month, TransactionsUpdateRequest request);

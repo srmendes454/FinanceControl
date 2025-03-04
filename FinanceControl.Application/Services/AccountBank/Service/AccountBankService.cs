@@ -1,7 +1,7 @@
 ﻿using FinanceControl.Application.Extensions.Paginated;
-using FinanceControl.Application.Services.Pix.DTO_s.Request;
-using FinanceControl.Application.Services.Pix.DTO_s.Response;
-using FinanceControl.Application.Services.Pix.Repository;
+using FinanceControl.Application.Services.AccountBank.Repository;
+using FinanceControl.Application.Services.AccountBank.DTO_s.Request;
+using FinanceControl.Application.Services.AccountBank.DTO_s.Response;
 using FinanceControl.Application.Services.Wallet.Repository;
 using FinanceControl.Domain.Entities;
 using FinanceControl.Domain.Enuns;
@@ -11,19 +11,19 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace FinanceControl.Application.Services.Pix.Service
+namespace FinanceControl.Application.Services.AccountBank.Service
 {
-    public class PixService : BaseService<PixService>, IPixService
+    public class AccountBankService : BaseService<AccountBankService>, IAccountBankService
     {
         #region [ Fields ]
 
-        private readonly IPixRepository _repository;
+        private readonly IAccountBankRepository _repository;
 
         #endregion
 
         #region [ Constructor ]
 
-        public PixService(IAppSettings appSettings, IPixRepository repository) : base(appSettings)
+        public AccountBankService(IAppSettings appSettings, IAccountBankRepository repository) : base(appSettings)
         {
             _repository = repository;
         }
@@ -33,19 +33,19 @@ namespace FinanceControl.Application.Services.Pix.Service
         #region [ Messages ]
 
         private const string WalletNotFound = "Carteira não encontrada";
-        private const string PixNotFound = "Pix não encontrado";
-        private const string Pix = "Pix";
+        private const string AccountBankNotFound = "Conta Bancária não encontrada";
+        private const string AccountBank = "Conta Bancária";
 
         #endregion
 
         #region [ Public Methods ]
 
         /// <summary>
-        /// Serviço para inserir um Pix
+        /// Serviço para inserir uma Conta Bancária
         /// </summary>
         /// <param name="request"></param>
         /// <returns></returns>
-        public async Task<ResultValue> Insert(PixInsertRequest request)
+        public async Task<ResultValue> Insert(AccountBankInsertRequest request)
         {
             try
             {
@@ -58,11 +58,11 @@ namespace FinanceControl.Application.Services.Pix.Service
                 if (wallet == null)
                     return ErrorResponse(WalletNotFound);
 
-                var model = new PixModel(userId, request.Name, request.LinkedAccount, Enum.Parse<PixType>(request.Type), request.Color, new PixWalletModel(wallet.WalletId, wallet.Name));
+                var model = new AccountBankModel(userId, request.Name, Enum.Parse<AccountBankType>(request.Type), request.Color, new AccountBankWalletModel(wallet.WalletId, wallet.Name));
 
                 await _repository.InsertOneAsync(model);
 
-                return SuccessResponse(Pix, Message.SUCCESSFULLY_ADDED_M.GetEnumDescription());
+                return SuccessResponse(AccountBank, Message.SUCCESSFULLY_ADDED_F.GetEnumDescription());
             }
             catch (Exception ex)
             {
@@ -71,23 +71,23 @@ namespace FinanceControl.Application.Services.Pix.Service
         }
 
         /// <summary>
-        /// Serviço para Obter um Pix
+        /// Serviço para Obter uma Conta Bancária
         /// </summary>
-        /// <param name="pixId"></param>
+        /// <param name="accountBankId"></param>
         /// <returns></returns>
-        public async Task<ResultValue> GetById(Guid pixId)
+        public async Task<ResultValue> GetById(Guid accountBankId)
         {
             try
             {
                 var userId = GetCurrentUserId();
-                if (pixId == Guid.Empty || userId == Guid.Empty)
+                if (accountBankId == Guid.Empty || userId == Guid.Empty)
                     return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-                var record = await _repository.GetById(pixId);
+                var record = await _repository.GetById(accountBankId);
                 if (record == null)
-                    return ErrorResponse(PixNotFound);
+                    return ErrorResponse(AccountBankNotFound);
 
-                var result = _mapper.Map<PixResponse>(record);
+                var result = _mapper.Map<AccountBankResponse>(record);
 
                 return SuccessResponse(result);
             }
@@ -98,7 +98,7 @@ namespace FinanceControl.Application.Services.Pix.Service
         }
 
         /// <summary>
-        /// Serviço para Obter todos os Pixs
+        /// Serviço para Obter todas as Contas Bancárias
         /// </summary>
         /// <param name="walletId"></param>
         /// <param name="search"></param>
@@ -114,10 +114,10 @@ namespace FinanceControl.Application.Services.Pix.Service
 
                 var list = await _repository.GetAll(walletId, search, take, skip);
                 if (list == null)
-                    return SuccessResponse(new PaginatedResponse<PixResponse> { Records = new List<PixResponse>() });
+                    return SuccessResponse(new PaginatedResponse<AccountBankResponse> { Records = new List<AccountBankResponse>() });
 
-                var record = _mapper.Map<List<PixResponse>>(list.Records);
-                var result = new PaginatedResponse<PixResponse>
+                var record = _mapper.Map<List<AccountBankResponse>>(list.Records);
+                var result = new PaginatedResponse<AccountBankResponse>
                 {
                     Records = [.. record],
                     Total = list.Total
@@ -132,26 +132,26 @@ namespace FinanceControl.Application.Services.Pix.Service
         }
 
         /// <summary>
-        /// Serviço para atualizar os dados de um Pix
+        /// Serviço para atualizar os dados de uma Conta Bancária
         /// </summary>
-        /// <param name="pixId"></param>
+        /// <param name="accountBankId"></param>
         /// <param name="request"></param>
         /// <returns></returns>
-        public async Task<ResultValue> Update(Guid pixId, PixInsertRequest request)
+        public async Task<ResultValue> Update(Guid accountBankId, AccountBankInsertRequest request)
         {
             try
             {
-                if (request == null || pixId == Guid.Empty)
+                if (request == null || accountBankId == Guid.Empty)
                     return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-                var model = await _repository.GetById(pixId);
+                var model = await _repository.GetById(accountBankId);
                 if (model == null)
-                    return ErrorResponse(PixNotFound);
+                    return ErrorResponse(AccountBankNotFound);
 
-                model.Update(request.Name, request.LinkedAccount, Enum.Parse<PixType>(request.Type), request.Color);
+                model.Update(request.Name, Enum.Parse<AccountBankType>(request.Type), request.Color);
                 await _repository.Update(model);
 
-                return SuccessResponse(Pix, Message.SUCCESSFULLY_UPDATED_M.GetEnumDescription());
+                return SuccessResponse(AccountBank, Message.SUCCESSFULLY_UPDATED_F.GetEnumDescription());
             }
             catch (Exception ex)
             {
@@ -160,21 +160,20 @@ namespace FinanceControl.Application.Services.Pix.Service
         }
 
         /// <summary>
-        /// Serviço para Excluir um Boleto
+        /// Serviço para Excluir uma Conta Bancária
         /// </summary>
-        /// <param name="walletId"></param>
-        /// <param name="pixId"></param>
+        /// <param name="accountBankId"></param>
         /// <returns></returns>
-        public async Task<ResultValue> Delete(Guid pixId)
+        public async Task<ResultValue> Delete(Guid accountBankId)
         {
             try
             {
-                if (pixId == Guid.Empty)
+                if (accountBankId == Guid.Empty)
                     return ErrorResponse(Message.INVALID_OBJECT.GetEnumDescription());
 
-                await _repository.Delete(pixId);
+                await _repository.Delete(accountBankId);
 
-                return SuccessResponse(Pix, Message.SUCCESSFULLY_DELETED_M.GetEnumDescription());
+                return SuccessResponse(AccountBank, Message.SUCCESSFULLY_DELETED_M.GetEnumDescription());
             }
             catch (Exception ex)
             {
@@ -187,16 +186,16 @@ namespace FinanceControl.Application.Services.Pix.Service
         #region [ List Enuns ]
 
         /// <summary>
-        /// Listagem do Tipos de Chaves Pix
+        /// Listagem do Tipos de Contas Bancárias
         /// </summary>
         /// <returns></returns>
-        public ResultValue ListPixTypes()
+        public ResultValue ListAccountBankTypes()
         {
             try
             {
-                var result = Enum.GetValues<PixType>().GetEnumDescriptionAtributte();
+                var result = Enum.GetValues<AccountBankType>().GetEnumDescriptionAtributte();
                 if (result == null || result.Count <= 0)
-                    return ErrorResponse("Tipos de Chave Pix não encontrada!");
+                    return ErrorResponse("Tipos de Conta Bancária não encontradas!");
 
                 return SuccessResponse(result);
             }

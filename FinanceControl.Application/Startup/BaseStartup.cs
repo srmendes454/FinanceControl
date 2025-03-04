@@ -1,6 +1,4 @@
 ﻿using FinanceControl.Application.Extensions.Utils.Email;
-using FinanceControl.Application.Extensions.Utils.Repetition;
-using FinanceControl.Application.Extensions.Utils.SignedBy;
 using FinanceControl.Infra.AppSettings;
 using FinanceControl.Infra.BaseEnvironment;
 using FinanceControl.Infra.Context;
@@ -117,8 +115,6 @@ public class BaseStartup
         services.AddSingleton<IAppSettings, AppSettings>();
 
         services.AddScoped<IEmail, Email>();
-        services.AddScoped<IAddRepetition, AddRepetition>();
-        services.AddScoped<ISignedBy, SignedBy>();
 
         services.AddScoped<IRequestContainer>(a =>
         {

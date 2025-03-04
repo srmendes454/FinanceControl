@@ -1,15 +1,11 @@
 ﻿using FinanceControl.Application.Services.Transactions.DTO_s.Request;
 using FinanceControl.Application.Services.Transactions.Service;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks;
-using FinanceControl.Application.Extensions.Utils.Email;
-using System;
-using FinanceControl.Application.Extensions.Utils.Repetition;
-using FinanceControl.Application.Extensions.Utils.SignedBy;
 using FinanceControl.Infra.AppSettings;
 using FinanceControl.Infra.ControllerBase;
-using FinanceControl.Infra.RequestContainer;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Threading.Tasks;
 
 namespace FinanceControl.Controller;
 
@@ -61,11 +57,11 @@ public class TransactionsController : BaseController<TransactionsController>
     /// </summary>
     /// <param name="request"></param>
     /// <returns></returns>
-    [HttpPost("/v1/transaction/pix/{pixId}")]
+    [HttpPost("/v1/transaction/account-bank/{accountBankId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> InsertToPix([FromRoute] Guid pixId, [FromBody] TransactionsInsertRequest request)
+    public async Task<IActionResult> InsertToAccountBank([FromRoute] Guid accountBankId, [FromBody] TransactionsInsertRequest request)
     {
-        return Ok(await _service.InsertToPix(pixId, request));
+        return Ok(await _service.InsertToAccountBank(accountBankId, request));
     }
 
     /// <summary>

@@ -8,22 +8,21 @@ using System.Runtime.Serialization;
 namespace FinanceControl.Domain.Entities
 {
     [DataContract]
-    [Table("Pix")]
-    public class PixModel : EntityBase
+    [Table("AccountBank")]
+    public class AccountBankModel : EntityBase
     {
         #region [ Constructor ]
-        public PixModel(Guid userId, string name, string linkedAccount, PixType type, string color, PixWalletModel wallet)
+        public AccountBankModel(Guid userId, string name, AccountBankType type, string color, AccountBankWalletModel wallet)
         {
-            PixId = Guid.NewGuid();
+            AccountBankId = Guid.NewGuid();
             CreatedBy = userId;
             Name = name;
-            LinkedAccount = linkedAccount;
             Type = type;
             Color = color;
-            Wallet = new PixWalletModel(wallet.WalletId, wallet.Name);
+            Wallet = new AccountBankWalletModel(wallet.WalletId, wallet.Name);
             Active = true;
         }
-        public PixModel() { }
+        public AccountBankModel() { }
 
         #endregion
 
@@ -31,9 +30,9 @@ namespace FinanceControl.Domain.Entities
 
         [DataMember]
         [BsonIgnoreIfNull]
-        [BsonElement("PixId")]
+        [BsonElement("AccountBankId")]
         [BsonRepresentation(BsonType.String)]
-        public Guid PixId { get; set; }
+        public Guid AccountBankId { get; set; }
 
         [DataMember]
         [BsonIgnoreIfNull]
@@ -45,25 +44,20 @@ namespace FinanceControl.Domain.Entities
 
         [DataMember]
         [BsonIgnoreIfNull]
-        public string LinkedAccount { get; set; }
-
-        [DataMember]
-        [BsonIgnoreIfNull]
         [BsonRepresentation(BsonType.String)]
-        public PixType Type { get; set; }
+        public AccountBankType Type { get; set; }
 
         [DataMember]
         [BsonIgnoreIfNull]
-        public PixWalletModel Wallet { get; set; }
+        public AccountBankWalletModel Wallet { get; set; }
 
         #endregion
 
         #region [ Public Methods ]
 
-        public void Update(string name, string linkedAccount, PixType type, string color)
+        public void Update(string name, AccountBankType type, string color)
         {
             Name = name;
-            LinkedAccount = linkedAccount;
             Type = type;
             Color = color;
             UpdateDate = DateTime.UtcNow;
@@ -72,10 +66,10 @@ namespace FinanceControl.Domain.Entities
         #endregion
     }
 
-    public class PixWalletModel
+    public class AccountBankWalletModel
     {
         #region [ Constructor ]
-        public PixWalletModel(Guid walletId, string name)
+        public AccountBankWalletModel(Guid walletId, string name)
         {
             WalletId = walletId;
             Name = name;
